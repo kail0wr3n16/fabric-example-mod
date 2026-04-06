@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.example.context.PlayerContext;
 import com.example.module.setting.Setting;
 
 import net.minecraft.client.DeltaTracker;
@@ -95,6 +96,13 @@ public abstract class Module {
 	}
 
 	public void onTick(Minecraft client) {
+	}
+
+	public void onContextChange(PlayerContext context) {
+	}
+
+	public void onContextChanged(PlayerContext context) {
+		onContextChange(context);
 	}
 
 	public void onHudRender(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {

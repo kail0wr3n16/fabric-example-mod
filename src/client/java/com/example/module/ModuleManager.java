@@ -23,11 +23,14 @@ import java.util.regex.Pattern;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.example.context.PlayerContext;
 import com.example.module.setting.BooleanSetting;
 import com.example.module.setting.ColorSetting;
 import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
 import com.example.ui.HudManager;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
@@ -363,6 +366,51 @@ public class ModuleManager {
 
 	private void onSettingChanged() {
 		scheduleConfigSave();
+	}
+
+	public void onContextChanged(PlayerContext context) {
+		applyAdaptiveProfile(context);
+		for (Module module : modules.values()) {
+			module.onContextChanged(context);
+		}
+	}
+
+	private void applyAdaptiveProfile(PlayerContext context) {
+		Module adaptive = modules.get("adaptiveui");
+		if (!(adaptive instanceof AdaptiveUiModule adaptiveUiModule)
+			|| !adaptiveUiModule.isAdaptiveModeEnabled()
+			|| !adaptiveUiModule.isAdaptiveProfilesEnabled()
+			|| hudManager == null) {
+			return;
+		}
+
+		switch (context) {
+			case COMBAT -> {
+				hudManager.setElementEnabled("fps", true);
+				hudManager.setElementEnabled("modulelist", true);
+			}
+			case MOVING -> {
+				hudManager.setElementEnabled("coordinates", true);
+				hudManager.setElementEnabled("direction", true);
+			}
+			case IDLE -> {
+				hudManager.setElementEnabled("fps", false);
+				hudManager.setElementEnabled("modulelist", false);
+				hudManager.setElementEnabled("direction", false);
+			}
+			case LOW_HEALTH -> {
+				hudManager.setElementEnabled("fps", true);
+				hudManager.setElementEnabled("coordinates", true);
+			}
+		}
+	}
+
+	public void renderModuleHud(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {
+		for (Module module : modules.values()) {
+			if (module.isEnabled()) {
+				module.onHudRender(guiGraphics, tickCounter);
+			}
+		}
 	}
 
 	private static final class ConfigSaveThreadFactory implements ThreadFactory {

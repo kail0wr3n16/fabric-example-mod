@@ -84,6 +84,7 @@ public class ClickGuiScreen extends Screen {
 
 		long nowMs = System.currentTimeMillis();
 		float fadeT = Math.min(1.0f, (nowMs - openTimeMs) / (float) PANEL_FADE_MS);
+		boolean cleanUiMode = isCleanUiMode();
 
 		int availableWidth = Math.max(100, this.width - (OUTER_MARGIN * 2));
 		int panelCount = ModuleCategory.values().length;
@@ -105,7 +106,7 @@ public class ClickGuiScreen extends Screen {
 		int panelX = Math.max(2, (this.width - totalPanelsWidth) / 2);
 		int panelY = OUTER_MARGIN + 24;
 
-		guiGraphics.fill(0, 0, this.width, this.height, withAlpha(0x0B0D12, (int) Math.round(170 * fadeT)));
+		guiGraphics.fill(0, 0, this.width, this.height, withAlpha(cleanUiMode ? 0x0A0C10 : 0x0B0D12, (int) Math.round(170 * fadeT)));
 		guiGraphics.centeredText(this.font, this.title, this.width / 2, OUTER_MARGIN, 0xFFFFFFFF);
 
 		Map<ModuleCategory, List<Module>> grouped = moduleManager.getGroupedByCategory();
@@ -122,8 +123,10 @@ public class ClickGuiScreen extends Screen {
 			panelScrollOffsets.put(category, scroll);
 			panelScrollHitboxes.add(new PanelScrollHitbox(category, panelX, contentTop, panelX + panelWidth, contentBottom, maxScroll));
 
-			guiGraphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight, withAlpha(0x161A22, (int) Math.round(224 * fadeT)));
-			guiGraphics.fill(panelX, panelY, panelX + panelWidth, panelY + PANEL_HEADER_HEIGHT, withAlpha(0x1F2633, (int) Math.round(255 * fadeT)));
+			guiGraphics.fill(panelX, panelY, panelX + panelWidth, panelY + panelHeight,
+				withAlpha(cleanUiMode ? 0x141821 : 0x161A22, (int) Math.round(224 * fadeT)));
+			guiGraphics.fill(panelX, panelY, panelX + panelWidth, panelY + PANEL_HEADER_HEIGHT,
+				withAlpha(cleanUiMode ? 0x1A2230 : 0x1F2633, (int) Math.round(255 * fadeT)));
 			guiGraphics.fill(panelX, panelY, panelX + panelWidth, panelY + 1, ClientColors.PRIMARY_TEXT_ARGB);
 
 			guiGraphics.centeredText(this.font, Component.literal(category.name()), panelX + (panelWidth / 2), panelY + 6, 0xFFFFFFFF);
@@ -145,6 +148,9 @@ public class ClickGuiScreen extends Screen {
 			height += MODULE_ROW_HEIGHT;
 			if (expandedModules.contains(module.getName())) {
 				height += SETTING_ROW_HEIGHT + SETTING_GAP;
+				if ("adaptiveui".equals(module.getName())) {
+					height += SETTING_ROW_HEIGHT + SETTING_GAP;
+				}
 				if ("overlay".equals(module.getName())) {
 					height += (SETTING_ROW_HEIGHT + SETTING_GAP) * 5;
 				}
@@ -158,6 +164,7 @@ public class ClickGuiScreen extends Screen {
 
 	private int renderModuleRow(GuiGraphicsExtractor guiGraphics, Module module, int panelX, int panelWidth, int rowY, int clipTop, int clipBottom,
 			int mouseX, int mouseY, long nowMs) {
+		boolean cleanUiMode = isCleanUiMode();
 		int rowLeft = panelX + PANEL_PADDING;
 		int rowRight = panelX + panelWidth - PANEL_PADDING;
 		int rowBottom = rowY + MODULE_ROW_HEIGHT;
@@ -183,17 +190,26 @@ public class ClickGuiScreen extends Screen {
 			guiGraphics.fill(rowLeft, rowY, rowRight, rowBottom, bgColor);
 
 			String keyLabel = getModuleKeyLabel(module);
-			guiGraphics.text(this.font, Component.literal(module.getName() + " [" + keyLabel + "]"), rowLeft + 4, rowY + 3, 0xFFF0F3F8, false);
+			String moduleLabel = cleanUiMode ? module.getName() : module.getName() + " [" + keyLabel + "]";
+			guiGraphics.text(this.font, Component.literal(moduleLabel), rowLeft + 4, rowY + 3, 0xFFF0F3F8, false);
 
-			Component state = Component.literal(module.isEnabled() ? "ON" : "OFF");
-			int stateWidth = this.font.width(state);
-			int stateColor = module.isEnabled() ? ClientColors.PRIMARY_TEXT_ARGB : 0xFF9AA3B2;
-			guiGraphics.text(this.font, state, rowRight - stateWidth - 4, rowY + 3, stateColor, false);
+			if (cleanUiMode) {
+				int indicatorColor = module.isEnabled() ? ClientColors.PRIMARY_TEXT_ARGB : 0xFF4C586C;
+				guiGraphics.fill(rowRight - 6, rowY + 4, rowRight - 3, rowY + 10, indicatorColor);
+			} else {
+				Component state = Component.literal(module.isEnabled() ? "ON" : "OFF");
+				int stateWidth = this.font.width(state);
+				int stateColor = module.isEnabled() ? ClientColors.PRIMARY_TEXT_ARGB : 0xFF9AA3B2;
+				guiGraphics.text(this.font, state, rowRight - stateWidth - 4, rowY + 3, stateColor, false);
+			}
 		}
 
 		int nextY = rowBottom;
 		if (expandedModules.contains(module.getName())) {
 			nextY = renderBindRow(guiGraphics, module, rowLeft + 6, rowRight - 6, nextY, clipTop, clipBottom);
+			if ("adaptiveui".equals(module.getName())) {
+				nextY = renderSectionRow(guiGraphics, "Context Settings", rowLeft + 6, rowRight - 6, nextY, clipTop, clipBottom);
+			}
 			if ("overlay".equals(module.getName())) {
 				nextY = renderHudToggleRow(guiGraphics, "watermark", "watermark", rowLeft + 6, rowRight - 6, nextY, clipTop, clipBottom);
 				nextY = renderHudToggleRow(guiGraphics, "fps", "fps", rowLeft + 6, rowRight - 6, nextY, clipTop, clipBottom);
@@ -213,7 +229,7 @@ public class ClickGuiScreen extends Screen {
 		int rowBottom = rowY + SETTING_ROW_HEIGHT;
 		if (intersectsClip(rowY, rowBottom, clipTop, clipBottom)) {
 			guiGraphics.fill(left, rowY, right, rowBottom, 0x22000000);
-			guiGraphics.text(this.font, Component.literal("bind"), left + 3, rowY + 2, 0xFFADB5C0, false);
+			guiGraphics.text(this.font, Component.literal(isCleanUiMode() ? "key" : "bind"), left + 3, rowY + 2, 0xFFADB5C0, false);
 
 			boolean listening = listeningBindModule == module;
 			String bindText = listening ? "PRESS KEY" : getModuleKeyLabel(module);
@@ -222,6 +238,15 @@ public class ClickGuiScreen extends Screen {
 			int bindColor = listening ? ClientColors.PRIMARY_TEXT_ARGB : 0xFFE6EAF2;
 			guiGraphics.text(this.font, bindValue, right - bindWidth - 6, rowY + 2, bindColor, false);
 			bindHitboxes.add(new BindHitbox(module, left, rowY, right, rowBottom));
+		}
+		return rowBottom + SETTING_GAP;
+	}
+
+	private int renderSectionRow(GuiGraphicsExtractor guiGraphics, String label, int left, int right, int rowY, int clipTop, int clipBottom) {
+		int rowBottom = rowY + SETTING_ROW_HEIGHT;
+		if (intersectsClip(rowY, rowBottom, clipTop, clipBottom)) {
+			guiGraphics.fill(left, rowY, right, rowBottom, 0x1E000000);
+			guiGraphics.text(this.font, Component.literal(label), left + 3, rowY + 2, 0xFFBFD2EA, false);
 		}
 		return rowBottom + SETTING_GAP;
 	}
@@ -623,6 +648,10 @@ public class ClickGuiScreen extends Screen {
 
 	private String formatNumberForInput(NumberSetting setting, double value) {
 		return formatNumberForDisplay(setting, value);
+	}
+
+	private boolean isCleanUiMode() {
+		return true;
 	}
 
 	@Override

@@ -1,7 +1,12 @@
 package com.example.ui;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.example.context.ContextManager;
+import com.example.context.PlayerContext;
+import com.example.module.AdaptiveUiModule;
 import com.example.module.Module;
 import com.example.module.ModuleManager;
 import com.example.ui.hud.CoordinatesHudElement;
@@ -14,18 +19,24 @@ import com.example.ui.hud.WatermarkHudElement;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 
 public class HudManager {
 	private static final int OVERLAY_PADDING = 3;
 	private static final int TEXT_HEIGHT = 9;
 	private static final int LINE_GAP = 2;
+	private static final float ALPHA_LERP_RATE = 0.20f;
+	private static final float COLOR_LERP_RATE = 0.12f;
 
 	private final ModuleManager moduleManager;
+	private ContextManager contextManager;
 	private final WatermarkHudElement watermarkElement = new WatermarkHudElement();
 	private final FpsHudElement fpsElement = new FpsHudElement();
 	private final CoordinatesHudElement coordinatesElement = new CoordinatesHudElement();
 	private final DirectionHudElement directionElement = new DirectionHudElement();
 	private final ModuleListHudElement moduleListElement;
+	private final Map<String, Float> elementAlpha = new HashMap<>();
+	private int activeTextColor = ClientColors.PRIMARY_TEXT_ARGB;
 
 	public record HudElementBounds(String elementId, String label, int x, int y, int width, int height, boolean enabled, boolean rightAligned) {
 	}
@@ -33,39 +44,73 @@ public class HudManager {
 	public HudManager(ModuleManager moduleManager) {
 		this.moduleManager = moduleManager;
 		this.moduleListElement = new ModuleListHudElement(moduleManager);
+		elementAlpha.put("watermark", 1.0f);
+		elementAlpha.put("fps", 1.0f);
+		elementAlpha.put("coordinates", 1.0f);
+		elementAlpha.put("direction", 1.0f);
+		elementAlpha.put("modulelist", 1.0f);
+	}
+
+	public void setContextManager(ContextManager contextManager) {
+		this.contextManager = contextManager;
 	}
 
 	public void renderHud(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {
+		moduleManager.renderModuleHud(guiGraphics, tickCounter);
+
 		Module overlayModule = moduleManager.get("overlay");
 		if (overlayModule == null || !overlayModule.isEnabled()) {
 			return;
 		}
 
-		renderTopLeftOverlay(guiGraphics);
-
-		if (moduleListElement.isEnabled()) {
-			Minecraft client = Minecraft.getInstance();
-			moduleListElement.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
-		}
-	}
-
-	private void renderTopLeftOverlay(GuiGraphicsExtractor guiGraphics) {
 		Minecraft client = Minecraft.getInstance();
-
-		HudElement[] elements = new HudElement[] { watermarkElement, fpsElement, coordinatesElement, directionElement };
-		int lineCount = 0;
-		int textWidth = 0;
-		for (HudElement element : elements) {
-			if (!element.isEnabled()) {
-				continue;
-			}
-			lineCount += element.getLineCount(client);
-			textWidth = Math.max(textWidth, element.getMaxWidth(client));
-		}
-
-		if (lineCount == 0) {
+		if (client.player == null) {
 			return;
 		}
+
+		PlayerContext context = contextManager == null ? PlayerContext.IDLE : contextManager.getCurrentContext();
+		boolean adaptiveMode = isAdaptiveModeEnabled();
+		boolean cleanUiMode = isCleanUiModeEnabled();
+
+		updateTextColor(context, adaptiveMode, cleanUiMode);
+		updateElementAlphas(context, adaptiveMode, cleanUiMode);
+
+		renderTopLeftOverlay(guiGraphics, client, context, adaptiveMode, cleanUiMode);
+
+		float moduleListAlpha = elementAlpha.getOrDefault("modulelist", 0.0f);
+		if (moduleListAlpha > 0.02f && moduleListElement.isEnabled() && shouldShowElement("modulelist", context, adaptiveMode, cleanUiMode)) {
+			int moduleListColor = withScaledAlpha(activeTextColor, moduleListAlpha);
+			moduleListElement.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, moduleListColor);
+		}
+
+		renderContextNotification(guiGraphics, client);
+	}
+
+	private void renderContextNotification(GuiGraphicsExtractor guiGraphics, Minecraft client) {
+		if (contextManager == null) {
+			return;
+		}
+
+		String label = contextManager.getActiveContextLabel();
+		if (label.isEmpty()) {
+			return;
+		}
+
+		float alpha = contextManager.getActiveContextLabelAlpha();
+		if (alpha <= 0.01f) {
+			return;
+		}
+
+		int textWidth = client.font.width(label);
+		int x = (guiGraphics.guiWidth() - textWidth) / 2;
+		int y = 14;
+		int bg = withScaledAlpha(0xAA0D1018, alpha);
+		guiGraphics.fill(x - 8, y - 3, x + textWidth + 8, y + 10, bg);
+		guiGraphics.text(client.font, Component.literal(label), x, y, withScaledAlpha(0xFFFFFFFF, alpha), true);
+	}
+
+	private void renderTopLeftOverlay(GuiGraphicsExtractor guiGraphics, Minecraft client, PlayerContext context, boolean adaptiveMode, boolean cleanUiMode) {
+		HudElement[] elements = new HudElement[] { watermarkElement, fpsElement, coordinatesElement, directionElement };
 
 		int minX = Integer.MAX_VALUE;
 		int minY = Integer.MAX_VALUE;
@@ -73,7 +118,12 @@ public class HudManager {
 		int maxY = Integer.MIN_VALUE;
 
 		for (HudElement element : elements) {
-			if (!element.isEnabled()) {
+			String elementId = getElementId(element);
+			if (!element.isEnabled() || !shouldShowElement(elementId, context, adaptiveMode, cleanUiMode)) {
+				continue;
+			}
+			float alpha = elementAlpha.getOrDefault(elementId, 0.0f);
+			if (alpha <= 0.15f) {
 				continue;
 			}
 
@@ -89,15 +139,137 @@ public class HudManager {
 		}
 
 		if (minX <= maxX && minY <= maxY) {
-			guiGraphics.fill(minX - OVERLAY_PADDING, minY - OVERLAY_PADDING, maxX + OVERLAY_PADDING, maxY + OVERLAY_PADDING, 0x90000000);
+			int backgroundAlpha = cleanUiMode ? 84 : 144;
+			guiGraphics.fill(minX - OVERLAY_PADDING, minY - OVERLAY_PADDING, maxX + OVERLAY_PADDING, maxY + OVERLAY_PADDING,
+				(backgroundAlpha << 24));
 		}
 
 		for (HudElement element : elements) {
-			if (!element.isEnabled()) {
+			String elementId = getElementId(element);
+			if (!element.isEnabled() || !shouldShowElement(elementId, context, adaptiveMode, cleanUiMode)) {
 				continue;
 			}
-			element.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
+			float alpha = elementAlpha.getOrDefault(elementId, 0.0f);
+			if (alpha <= 0.02f) {
+				continue;
+			}
+			int color = withScaledAlpha(activeTextColor, alpha);
+			element.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, color);
 		}
+
+		if (adaptiveMode && context == PlayerContext.LOW_HEALTH) {
+			int warningColor = withScaledAlpha(0xFFFF7E7E, 0.92f);
+			guiGraphics.text(client.font, Component.literal("LOW HEALTH"), 6, 6 + TEXT_HEIGHT * 5, warningColor, true);
+		}
+	}
+
+	private void updateElementAlphas(PlayerContext context, boolean adaptiveMode, boolean cleanUiMode) {
+		for (String elementId : new String[] { "watermark", "fps", "coordinates", "direction", "modulelist" }) {
+			boolean userEnabled = isElementEnabled(elementId);
+			boolean visibleByContext = shouldShowElement(elementId, context, adaptiveMode, cleanUiMode);
+			float target = (userEnabled && visibleByContext) ? 1.0f : 0.0f;
+			float current = elementAlpha.getOrDefault(elementId, target);
+			current += (target - current) * ALPHA_LERP_RATE;
+			elementAlpha.put(elementId, current);
+		}
+	}
+
+	private boolean shouldShowElement(String elementId, PlayerContext context, boolean adaptiveMode, boolean cleanUiMode) {
+		if (!adaptiveMode) {
+			return true;
+		}
+
+		return switch (context) {
+			case COMBAT -> switch (elementId) {
+				case "watermark", "fps", "modulelist" -> true;
+				case "coordinates", "direction" -> !cleanUiMode;
+				default -> false;
+			};
+			case LOW_HEALTH -> switch (elementId) {
+				case "watermark", "fps", "coordinates" -> true;
+				case "modulelist" -> !cleanUiMode;
+				case "direction" -> !cleanUiMode;
+				default -> false;
+			};
+			case MOVING -> switch (elementId) {
+				case "watermark", "coordinates" -> true;
+				case "direction" -> !cleanUiMode;
+				default -> false;
+			};
+			case IDLE -> "watermark".equals(elementId);
+		};
+	}
+
+	private void updateTextColor(PlayerContext context, boolean adaptiveMode, boolean cleanUiMode) {
+		int targetColor = ClientColors.PRIMARY_TEXT_ARGB;
+		if (adaptiveMode) {
+			targetColor = switch (context) {
+				case COMBAT -> 0xFFFFC07A;
+				case LOW_HEALTH -> 0xFFFF8F8F;
+				case MOVING -> cleanUiMode ? 0xFFE8EEF8 : 0xFF9FDFFF;
+				case IDLE -> cleanUiMode ? 0xFFD9E0EC : ClientColors.PRIMARY_TEXT_ARGB;
+			};
+		}
+		activeTextColor = lerpColor(activeTextColor, targetColor, COLOR_LERP_RATE);
+	}
+
+	private String getElementId(HudElement element) {
+		if (element == watermarkElement) {
+			return "watermark";
+		}
+		if (element == fpsElement) {
+			return "fps";
+		}
+		if (element == coordinatesElement) {
+			return "coordinates";
+		}
+		if (element == directionElement) {
+			return "direction";
+		}
+		return "unknown";
+	}
+
+	private int withScaledAlpha(int argb, float alphaMultiplier) {
+		int alpha = (argb >>> 24) & 0xFF;
+		if (alpha == 0) {
+			alpha = 255;
+		}
+		int scaled = Math.max(0, Math.min(255, (int) Math.round(alpha * alphaMultiplier)));
+		return (argb & 0x00FFFFFF) | (scaled << 24);
+	}
+
+	private int lerpColor(int from, int to, float t) {
+		t = Math.max(0.0f, Math.min(1.0f, t));
+		int fa = (from >>> 24) & 0xFF;
+		int fr = (from >>> 16) & 0xFF;
+		int fg = (from >>> 8) & 0xFF;
+		int fb = from & 0xFF;
+		int ta = (to >>> 24) & 0xFF;
+		int tr = (to >>> 16) & 0xFF;
+		int tg = (to >>> 8) & 0xFF;
+		int tb = to & 0xFF;
+
+		int a = (int) (fa + ((ta - fa) * t));
+		int r = (int) (fr + ((tr - fr) * t));
+		int g = (int) (fg + ((tg - fg) * t));
+		int b = (int) (fb + ((tb - fb) * t));
+		return (a << 24) | (r << 16) | (g << 8) | b;
+	}
+
+	private AdaptiveUiModule getAdaptiveUiModule() {
+		Module module = moduleManager.get("adaptiveui");
+		if (module instanceof AdaptiveUiModule adaptiveUiModule) {
+			return adaptiveUiModule;
+		}
+		return null;
+	}
+
+	private boolean isAdaptiveModeEnabled() {
+		return false;
+	}
+
+	private boolean isCleanUiModeEnabled() {
+		return true;
 	}
 
 	public void setElementEnabled(String elementId, boolean enabled) {
