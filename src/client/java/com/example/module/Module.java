@@ -15,6 +15,7 @@ public abstract class Module {
 	private final String name;
 	private final ModuleCategory category;
 	private boolean enabled;
+	private Runnable stateChangeListener;
 	private KeyMapping keybind;
 	private final Map<String, Setting<?>> settings = new LinkedHashMap<>();
 
@@ -47,6 +48,10 @@ public abstract class Module {
 		} else {
 			onDisable();
 		}
+
+		if (stateChangeListener != null) {
+			stateChangeListener.run();
+		}
 	}
 
 	public void toggle() {
@@ -63,6 +68,10 @@ public abstract class Module {
 
 	public KeyMapping createDefaultKeybind(String modId) {
 		return null;
+	}
+
+	public void setStateChangeListener(Runnable stateChangeListener) {
+		this.stateChangeListener = stateChangeListener;
 	}
 
 	public <T extends Setting<?>> T addSetting(T setting) {

@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.lwjgl.glfw.GLFW;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.example.module.Module;
 import com.example.module.ModuleCategory;
 import com.example.module.ModuleManager;
@@ -17,6 +18,7 @@ import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
 import com.example.ui.ClientColors;
 
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -38,11 +40,13 @@ public class ClickGuiScreen extends Screen {
 	private final ModuleManager moduleManager;
 	private final Set<String> expandedModules = new HashSet<>();
 	private final List<ModuleRowHitbox> moduleHitboxes = new ArrayList<>();
+	private final List<BindHitbox> bindHitboxes = new ArrayList<>();
 	private final List<BooleanSettingHitbox> booleanSettingHitboxes = new ArrayList<>();
 	private final List<NumberAdjustHitbox> numberAdjustHitboxes = new ArrayList<>();
 	private final List<NumberValueHitbox> numberValueHitboxes = new ArrayList<>();
 	private NumberSetting editingNumberSetting = null;
 	private String numberInputBuffer = "";
+	private Module listeningBindModule = null;
 
 	public ClickGuiScreen(ModuleManager moduleManager) {
 		super(Component.literal("My Client"));
@@ -52,6 +56,7 @@ public class ClickGuiScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float deltaTicks) {
 		moduleHitboxes.clear();
+		bindHitboxes.clear();
 		booleanSettingHitboxes.clear();
 		numberAdjustHitboxes.clear();
 		numberValueHitboxes.clear();
@@ -106,6 +111,7 @@ public class ClickGuiScreen extends Screen {
 		for (Module module : modules) {
 			height += MODULE_ROW_HEIGHT;
 			if (expandedModules.contains(module.getName())) {
+				height += SETTING_ROW_HEIGHT + SETTING_GAP;
 				for (Setting<?> setting : module.getSettings()) {
 					height += SETTING_ROW_HEIGHT + SETTING_GAP;
 				}
@@ -124,7 +130,8 @@ public class ClickGuiScreen extends Screen {
 		int bgColor = module.isEnabled() ? 0x2D54C5FF : 0x1AFFFFFF;
 		guiGraphics.fill(rowLeft, rowY, rowRight, rowBottom, bgColor);
 
-		Component label = Component.literal(module.getName());
+		String keyLabel = getModuleKeyLabel(module);
+		Component label = Component.literal(module.getName() + " [" + keyLabel + "]");
 		guiGraphics.text(this.font, label, rowLeft + 4, rowY + 3, 0xFFE6EAF2, false);
 
 		Component state = Component.literal(module.isEnabled() ? "ON" : "OFF");
@@ -134,12 +141,38 @@ public class ClickGuiScreen extends Screen {
 
 		int nextY = rowBottom;
 		if (expandedModules.contains(module.getName())) {
+			nextY = renderBindRow(guiGraphics, module, rowLeft + 6, rowRight - 6, nextY);
 			for (Setting<?> setting : module.getSettings()) {
 				nextY = renderSettingRow(guiGraphics, setting, rowLeft + 6, rowRight - 6, nextY);
 			}
 		}
 
 		return nextY;
+	}
+
+	private int renderBindRow(GuiGraphicsExtractor guiGraphics, Module module, int left, int right, int rowY) {
+		int rowBottom = rowY + SETTING_ROW_HEIGHT;
+		guiGraphics.fill(left, rowY, right, rowBottom, 0x22000000);
+
+		guiGraphics.text(this.font, Component.literal("bind"), left + 3, rowY + 2, 0xFFADB5C0, false);
+
+		boolean listening = listeningBindModule == module;
+		String bindText = listening ? "PRESS KEY" : getModuleKeyLabel(module);
+		Component bindValue = Component.literal(bindText);
+		int bindWidth = this.font.width(bindValue);
+		int bindColor = listening ? ClientColors.PRIMARY_TEXT_ARGB : 0xFFE6EAF2;
+		guiGraphics.text(this.font, bindValue, right - bindWidth - 6, rowY + 2, bindColor, false);
+
+		bindHitboxes.add(new BindHitbox(module, left, rowY, right, rowBottom));
+		return rowBottom + SETTING_GAP;
+	}
+
+	private String getModuleKeyLabel(Module module) {
+		KeyMapping keybind = module.getKeybind();
+		if (keybind == null || keybind.isUnbound()) {
+			return "NONE";
+		}
+		return keybind.getTranslatedKeyMessage().getString().toUpperCase(Locale.ROOT);
 	}
 
 	private int renderSettingRow(GuiGraphicsExtractor guiGraphics, Setting<?> setting, int left, int right, int rowY) {
@@ -222,9 +255,18 @@ public class ClickGuiScreen extends Screen {
 		}
 
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+			for (BindHitbox hitbox : bindHitboxes) {
+				if (hitbox.contains(mouseX, mouseY)) {
+					commitNumberInput();
+					listeningBindModule = hitbox.module();
+					return true;
+				}
+			}
+
 			for (BooleanSettingHitbox hitbox : booleanSettingHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
 					commitNumberInput();
+					listeningBindModule = null;
 					hitbox.setting().setValue(!hitbox.setting().isEnabled());
 					return true;
 				}
@@ -235,6 +277,7 @@ public class ClickGuiScreen extends Screen {
 					if (editingNumberSetting != hitbox.setting()) {
 						commitNumberInput();
 					}
+					listeningBindModule = null;
 					adjustNumberSetting(hitbox.setting(), hitbox.delta());
 					return true;
 				}
@@ -247,6 +290,7 @@ public class ClickGuiScreen extends Screen {
 						editingNumberSetting = hitbox.setting();
 						numberInputBuffer = Long.toString(Math.round(hitbox.setting().getValue()));
 					}
+					listeningBindModule = null;
 					return true;
 				}
 			}
@@ -254,12 +298,14 @@ public class ClickGuiScreen extends Screen {
 			for (ModuleRowHitbox hitbox : moduleHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
 					commitNumberInput();
+					listeningBindModule = null;
 					hitbox.module().toggle();
 					return true;
 				}
 			}
 
 			commitNumberInput();
+			listeningBindModule = null;
 		}
 
 		return super.mouseClicked(event, bl);
@@ -288,6 +334,43 @@ public class ClickGuiScreen extends Screen {
 
 	@Override
 	public boolean keyPressed(KeyEvent event) {
+		if (listeningBindModule != null) {
+			int keyCode = event.key();
+			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+				listeningBindModule = null;
+				return true;
+			}
+
+			KeyMapping moduleKeybind = listeningBindModule.getKeybind();
+			if (moduleKeybind == null) {
+				listeningBindModule = null;
+				return true;
+			}
+
+			if (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+				moduleKeybind.setKey(InputConstants.UNKNOWN);
+				KeyMapping.resetMapping();
+				if (this.minecraft != null && this.minecraft.options != null) {
+					this.minecraft.options.save();
+				}
+				listeningBindModule = null;
+				return true;
+			}
+
+			InputConstants.Key pressedKey = InputConstants.getKey(event);
+			if (pressedKey.getType() == InputConstants.Type.KEYSYM && pressedKey.getValue() == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+				return true;
+			}
+
+			moduleKeybind.setKey(pressedKey);
+			KeyMapping.resetMapping();
+			if (this.minecraft != null && this.minecraft.options != null) {
+				this.minecraft.options.save();
+			}
+			listeningBindModule = null;
+			return true;
+		}
+
 		if (editingNumberSetting == null) {
 			return super.keyPressed(event);
 		}
@@ -355,6 +438,12 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	private record ModuleRowHitbox(Module module, int left, int top, int right, int bottom) {
+		private boolean contains(double x, double y) {
+			return x >= left && x <= right && y >= top && y <= bottom;
+		}
+	}
+
+	private record BindHitbox(Module module, int left, int top, int right, int bottom) {
 		private boolean contains(double x, double y) {
 			return x >= left && x <= right && y >= top && y <= bottom;
 		}

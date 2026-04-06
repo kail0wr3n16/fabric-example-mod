@@ -6,6 +6,12 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -18,11 +24,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 public class ModuleManager {
 	private static final int HUD_MARGIN = 6;
 	private static final int HUD_LINE_HEIGHT = 10;
+	private static final String MODULE_STATE_FILE = "clientloaded-modules.properties";
 
 	private final Map<String, Module> modules = new LinkedHashMap<>();
+	private boolean applyingPersistedState;
 
 	public void register(Module module) {
 		modules.put(module.getName(), module);
+		module.setStateChangeListener(this::onModuleStateChanged);
 	}
 
 	public Module get(String name) {
@@ -73,6 +82,70 @@ public class ModuleManager {
 
 				module.setKeybind(registeredKeybind);
 			}
+		}
+	}
+
+	public void loadEnabledStates(Minecraft client) {
+		Path stateFile = getStateFile(client);
+		if (!Files.exists(stateFile)) {
+			return;
+		}
+
+		Properties props = new Properties();
+		try (InputStream in = Files.newInputStream(stateFile)) {
+			props.load(in);
+		} catch (IOException e) {
+			System.err.println("[clientloaded] Failed to load module states: " + e.getMessage());
+			return;
+		}
+
+		applyingPersistedState = true;
+		try {
+			for (Module module : modules.values()) {
+				String raw = props.getProperty(module.getName());
+				if (raw == null) {
+					continue;
+				}
+				module.setEnabled(Boolean.parseBoolean(raw));
+			}
+		} finally {
+			applyingPersistedState = false;
+		}
+	}
+
+	public void saveEnabledStates(Minecraft client) {
+		Path stateFile = getStateFile(client);
+		try {
+			Files.createDirectories(stateFile.getParent());
+		} catch (IOException e) {
+			System.err.println("[clientloaded] Failed to create config directory: " + e.getMessage());
+			return;
+		}
+
+		Properties props = new Properties();
+		for (Module module : modules.values()) {
+			props.setProperty(module.getName(), Boolean.toString(module.isEnabled()));
+		}
+
+		try (OutputStream out = Files.newOutputStream(stateFile)) {
+			props.store(out, "Clientloaded module enabled states");
+		} catch (IOException e) {
+			System.err.println("[clientloaded] Failed to save module states: " + e.getMessage());
+		}
+	}
+
+	private Path getStateFile(Minecraft client) {
+		return client.gameDirectory.toPath().resolve("config").resolve(MODULE_STATE_FILE);
+	}
+
+	private void onModuleStateChanged() {
+		if (applyingPersistedState) {
+			return;
+		}
+
+		Minecraft client = Minecraft.getInstance();
+		if (client != null) {
+			saveEnabledStates(client);
 		}
 	}
 

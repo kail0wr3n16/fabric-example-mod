@@ -23,6 +23,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -48,6 +49,9 @@ public class ExampleModClient implements ClientModInitializer {
 		});
 
 		HudElementRegistry.addLast(MODULES_HUD_ID, moduleManager::renderHud);
+
+		ClientLifecycleEvents.CLIENT_STARTED.register(moduleManager::loadEnabledStates);
+		ClientLifecycleEvents.CLIENT_STOPPING.register(moduleManager::saveEnabledStates);
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
 			dispatcher.register(

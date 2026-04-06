@@ -1,5 +1,8 @@
 package com.example.module;
 
+import com.mojang.blaze3d.platform.InputConstants;
+
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
 public class FullbrightModule extends Module {
@@ -9,6 +12,16 @@ public class FullbrightModule extends Module {
 
 	public FullbrightModule() {
 		super("fullbright", ModuleCategory.RENDER, false);
+	}
+
+	@Override
+	public KeyMapping createDefaultKeybind(String modId) {
+		return new KeyMapping(
+			"key.clientloaded.toggle_fullbright",
+			InputConstants.Type.KEYSYM,
+			InputConstants.UNKNOWN.getValue(),
+			KeyMapping.Category.MISC
+		);
 	}
 
 	@Override
