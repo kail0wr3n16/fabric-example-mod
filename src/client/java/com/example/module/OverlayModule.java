@@ -1,9 +1,14 @@
 package com.example.module;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 public class OverlayModule extends Module {
 	private static final Component OVERLAY_TEXT = Component.literal("Client Active");
@@ -12,6 +17,16 @@ public class OverlayModule extends Module {
 
 	public OverlayModule() {
 		super("overlay", false);
+	}
+
+	@Override
+	public KeyMapping createDefaultKeybind(String modId) {
+		return new KeyMapping(
+			"key.clientloaded.toggle_overlay",
+			InputConstants.Type.KEYSYM,
+			GLFW.GLFW_KEY_RIGHT_SHIFT,
+			KeyMapping.Category.register(Identifier.fromNamespaceAndPath(modId, "controls"))
+		);
 	}
 
 	@Override

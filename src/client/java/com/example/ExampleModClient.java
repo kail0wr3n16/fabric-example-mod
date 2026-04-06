@@ -1,8 +1,6 @@
 package com.example;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import org.lwjgl.glfw.GLFW;
 
 import com.example.module.Module;
 import com.example.module.ModuleManager;
@@ -12,10 +10,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -27,26 +23,10 @@ public class ExampleModClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		moduleManager.register(new OverlayModule());
-
-		KeyMapping toggleOverlayKey = KeyMappingHelper.registerKeyMapping(
-			new KeyMapping(
-				"key.clientloaded.toggle_overlay",
-				InputConstants.Type.KEYSYM,
-				GLFW.GLFW_KEY_RIGHT_SHIFT,
-				KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "controls"))
-			)
-		);
+		moduleManager.registerKeybinds(MOD_ID);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			while (toggleOverlayKey.consumeClick()) {
-				Module overlayModule = moduleManager.get("overlay");
-				overlayModule.toggle();
-
-				if (client.player != null) {
-					client.player.sendSystemMessage(Component.literal("Overlay " + (overlayModule.isEnabled() ? "enabled" : "disabled")));
-				}
-			}
-
+			moduleManager.handleKeyInput(client);
 			moduleManager.tick(client);
 		});
 
