@@ -22,7 +22,7 @@ public class InventoryMoveMixin {
     private Minecraft minecraft;
 
     @Inject(method = "tick", at = @At("TAIL"))
-    private void clientloaded$inventoryMove(CallbackInfo ci) {
+    private void clientmodules$inventoryMove(CallbackInfo ci) {
         InventoryMoveModule module = InventoryMoveModule.getInstance();
         if (module == null || !module.isEnabled() || !(minecraft.screen instanceof AbstractContainerScreen<?>)) {
             return;
@@ -38,7 +38,7 @@ public class InventoryMoveMixin {
     }
 
     private void updateKey(KeyMapping mapping) {
-        InputConstants.Key key = ((KeyMappingAccessor) mapping).clientloaded$getKey();
+        InputConstants.Key key = ((KeyMappingAccessor) mapping).clientmodules$getKey();
         if (key == null) {
             return;
         }

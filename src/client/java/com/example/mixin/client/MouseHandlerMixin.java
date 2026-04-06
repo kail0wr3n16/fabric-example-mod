@@ -19,7 +19,7 @@ public class MouseHandlerMixin {
 	private Minecraft minecraft;
 
 	@Inject(method = "onScroll(JDD)V", at = @At("HEAD"), cancellable = true)
-	private void clientloaded$zoomScroll(long windowPointer, double horizontalAmount, double verticalAmount, CallbackInfo ci) {
+	private void clientmodules$zoomScroll(long windowPointer, double horizontalAmount, double verticalAmount, CallbackInfo ci) {
 		if (minecraft.screen != null) {
 			return;
 		}

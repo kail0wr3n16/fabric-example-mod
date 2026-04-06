@@ -13,7 +13,7 @@ import net.minecraft.client.renderer.state.LightmapRenderState;
 @Mixin(LightmapRenderStateExtractor.class)
 public class LightmapRenderStateExtractorMixin {
 	@Inject(method = "extract", at = @At("TAIL"))
-	private void clientloaded$applyFullbright(LightmapRenderState state, float tickDelta, CallbackInfo ci) {
+	private void clientmodules$applyFullbright(LightmapRenderState state, float tickDelta, CallbackInfo ci) {
 		if (!FullbrightModule.isActive()) {
 			return;
 		}

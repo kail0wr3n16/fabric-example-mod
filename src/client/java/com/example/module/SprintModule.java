@@ -16,7 +16,7 @@ public class SprintModule extends Module {
 	@Override
 	public KeyMapping createDefaultKeybind(String modId) {
 		return new KeyMapping(
-			"key.clientloaded.toggle_sprint",
+			"key.clientmodules.toggle_sprint",
 			InputConstants.Type.KEYSYM,
 			InputConstants.UNKNOWN.getValue(),
 			KeyMapping.Category.MISC

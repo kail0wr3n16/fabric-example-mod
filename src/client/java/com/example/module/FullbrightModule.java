@@ -22,7 +22,7 @@ public class FullbrightModule extends Module {
 	@Override
 	public KeyMapping createDefaultKeybind(String modId) {
 		return new KeyMapping(
-			"key.clientloaded.toggle_fullbright",
+			"key.clientmodules.toggle_fullbright",
 			InputConstants.Type.KEYSYM,
 			InputConstants.UNKNOWN.getValue(),
 			KeyMapping.Category.MISC

@@ -12,7 +12,7 @@ import net.minecraft.client.Camera;
 @Mixin(Camera.class)
 public class CameraMixin {
 	@Inject(method = "calculateFov(F)F", at = @At("RETURN"), cancellable = true)
-	private void clientloaded$applyZoomFov(float partialTick, CallbackInfoReturnable<Float> cir) {
+	private void clientmodules$applyZoomFov(float partialTick, CallbackInfoReturnable<Float> cir) {
 		ZoomModule zoomModule = ZoomModule.getInstance();
 		if (zoomModule == null) {
 			return;

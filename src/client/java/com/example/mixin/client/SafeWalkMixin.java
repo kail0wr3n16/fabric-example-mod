@@ -13,7 +13,7 @@ import net.minecraft.core.BlockPos;
 @Mixin(LocalPlayer.class)
 public class SafeWalkMixin {
     @Inject(method = "isMovingSlowly", at = @At("HEAD"), cancellable = true)
-    private void clientloaded$safeWalk(CallbackInfoReturnable<Boolean> cir) {
+    private void clientmodules$safeWalk(CallbackInfoReturnable<Boolean> cir) {
         SafeWalkModule module = SafeWalkModule.getInstance();
         if (module == null || !module.isEnabled()) {
             return;

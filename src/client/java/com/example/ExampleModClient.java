@@ -65,7 +65,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 public class ExampleModClient implements ClientModInitializer {
-	private static final String MOD_ID = "clientloaded";
+	private static final String MOD_ID = "clientmodules";
 	private static final Identifier MODULES_HUD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "modules_hud");
 	private final ModuleManager moduleManager = new ModuleManager();
 	private final HudManager hudManager = new HudManager(moduleManager);
@@ -122,15 +122,15 @@ public class ExampleModClient implements ClientModInitializer {
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
 			dispatcher.register(
-				ClientCommands.literal("clientloaded")
+				ClientCommands.literal("clientmodules")
 					.executes(context -> {
-						context.getSource().sendFeedback(Component.literal("Usage: /clientloaded ping|modules|module ..."));
+						context.getSource().sendFeedback(Component.literal("Usage: /clientmodules ping|modules|module ..."));
 						return 1;
 					})
 					.then(
 						ClientCommands.literal("ping")
 							.executes(context -> {
-								context.getSource().sendFeedback(Component.literal("Pong from clientloaded"));
+								context.getSource().sendFeedback(Component.literal("Pong from clientmodules"));
 								return 1;
 							})
 					)

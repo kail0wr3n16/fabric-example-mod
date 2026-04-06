@@ -36,7 +36,7 @@ public class ZoomModule extends Module {
 	@Override
 	public KeyMapping createDefaultKeybind(String modId) {
 		return new KeyMapping(
-			"key.clientloaded.hold_zoom",
+			"key.clientmodules.hold_zoom",
 			InputConstants.Type.KEYSYM,
 			InputConstants.KEY_C,
 			KeyMapping.Category.MISC

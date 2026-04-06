@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "clientloaded",
+	"id": "clientmodules",
 	"version": "${version}",
-	"name": "Client Loaded Mod",
-	"description": "Minimal client mod that sends a chat message when joining a world.",
+	"name": "Client Modules",
+	"description": "A modular client-side utility mod with HUD overlays, movement aids, and visual enhancements.",
 	"authors": [
 		"You"
 	],
@@ -18,7 +18,7 @@
 		]
 	},
 	"mixins": [
-		"clientloaded.client.mixins.json"
+		"clientmodules.client.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.18.5",

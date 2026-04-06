@@ -34,7 +34,7 @@ public class OverlayModule extends Module {
 	@Override
 	public KeyMapping createDefaultKeybind(String modId) {
 		return new KeyMapping(
-			"key.clientloaded.toggle_overlay",
+			"key.clientmodules.toggle_overlay",
 			InputConstants.Type.KEYSYM,
 			GLFW.GLFW_KEY_N,
 			KeyMapping.Category.MISC

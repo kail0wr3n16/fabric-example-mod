@@ -35,7 +35,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
 public class ModuleManager {
-	private static final String CONFIG_DIR = "clientloaded/configs";
+	private static final String CONFIG_DIR = "clientmodules/configs";
 	private static final String CONFIG_EXTENSION = ".properties";
 	private static final String DEFAULT_CONFIG_NAME = "default";
 	private static final long SAVE_DEBOUNCE_MS = 350L;
@@ -165,7 +165,7 @@ public class ModuleManager {
 					names.add(fileName.substring(0, fileName.length() - CONFIG_EXTENSION.length()));
 				});
 		} catch (IOException e) {
-			System.err.println("[clientloaded] Failed to list configs: " + e.getMessage());
+			System.err.println("[clientmodules] Failed to list configs: " + e.getMessage());
 			return Collections.emptyList();
 		}
 
@@ -186,7 +186,7 @@ public class ModuleManager {
 		try (InputStream in = Files.newInputStream(configFile)) {
 			props.load(in);
 		} catch (IOException e) {
-			System.err.println("[clientloaded] Failed to load config: " + e.getMessage());
+			System.err.println("[clientmodules] Failed to load config: " + e.getMessage());
 			return;
 		}
 
@@ -279,7 +279,7 @@ public class ModuleManager {
 		try {
 			Files.createDirectories(configFile.getParent());
 		} catch (IOException e) {
-			System.err.println("[clientloaded] Failed to create config directory: " + e.getMessage());
+			System.err.println("[clientmodules] Failed to create config directory: " + e.getMessage());
 			return;
 		}
 
@@ -318,7 +318,7 @@ public class ModuleManager {
 			} catch (IOException ignored) {
 				// Best-effort fallback already failed.
 			}
-			System.err.println("[clientloaded] Failed to save config: " + e.getMessage());
+			System.err.println("[clientmodules] Failed to save config: " + e.getMessage());
 		}
 	}
 
@@ -416,7 +416,7 @@ public class ModuleManager {
 	private static final class ConfigSaveThreadFactory implements ThreadFactory {
 		@Override
 		public Thread newThread(Runnable runnable) {
-			Thread thread = new Thread(runnable, "clientloaded-config-save");
+			Thread thread = new Thread(runnable, "clientmodules-config-save");
 			thread.setDaemon(true);
 			return thread;
 		}

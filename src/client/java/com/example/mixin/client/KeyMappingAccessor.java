@@ -10,5 +10,5 @@ import net.minecraft.client.KeyMapping;
 @Mixin(KeyMapping.class)
 public interface KeyMappingAccessor {
     @Accessor("key")
-    InputConstants.Key clientloaded$getKey();
+    InputConstants.Key clientmodules$getKey();
 }

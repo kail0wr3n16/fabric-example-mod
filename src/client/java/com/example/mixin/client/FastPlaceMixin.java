@@ -16,7 +16,7 @@ public class FastPlaceMixin {
     private int rightClickDelay;
 
     @Inject(method = "tick", at = @At("TAIL"))
-    private void clientloaded$fastPlace(CallbackInfo ci) {
+    private void clientmodules$fastPlace(CallbackInfo ci) {
         FastPlaceModule module = FastPlaceModule.getInstance();
         if (module == null || !module.isEnabled()) {
             return;

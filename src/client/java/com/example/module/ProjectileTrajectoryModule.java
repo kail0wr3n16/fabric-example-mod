@@ -21,7 +21,7 @@ public class ProjectileTrajectoryModule extends Module {
     public ProjectileTrajectoryModule() {
         super("projectiletrajectory", ModuleCategory.RENDER, false);
         this.showCharge = addSetting(new BooleanSetting("showCharge", true));
-        this.yPos = addSetting(new NumberSetting("yPos", 60.0, 5.0, 160.0));
+        this.yPos = addSetting(new NumberSetting("yPos", 80.0, 5.0, 160.0));
     }
 
     @Override
@@ -43,7 +43,7 @@ public class ProjectileTrajectoryModule extends Module {
         String line = itemName;
 
         if (showCharge.isEnabled() && mc.player.isUsingItem()) {
-            line = line + " | charge " + formatCharge(mc.player.getUseItemRemainingTicks());
+            line = line + " | charge " + formatCharge(mc.player.getTicksUsingItem());
         }
 
         int width = Math.max(110, mc.font.width(line) + 12);
@@ -65,9 +65,8 @@ public class ProjectileTrajectoryModule extends Module {
             || stack.getItem().getClass().getSimpleName().contains("EnderPearl");
     }
 
-    private String formatCharge(int remainingTicks) {
-        int usedTicks = Math.max(0, 20 - remainingTicks);
-        int percent = Math.min(100, (int) Math.round((usedTicks / 20.0) * 100.0));
+    private String formatCharge(int ticksUsed) {
+        int percent = Math.min(100, (int) Math.round((ticksUsed / 20.0) * 100.0));
         return percent + "%";
     }
 }

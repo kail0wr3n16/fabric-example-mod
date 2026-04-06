@@ -29,7 +29,7 @@ public class InputHandler {
 		this.hudManager = hudManager;
 		this.openGuiKey = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping(
-				"key.clientloaded.open_gui",
+				"key.clientmodules.open_gui",
 				InputConstants.Type.KEYSYM,
 				GLFW.GLFW_KEY_RIGHT_SHIFT,
 				KeyMapping.Category.MISC
@@ -37,7 +37,7 @@ public class InputHandler {
 		);
 		this.openHudEditorKey = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping(
-				"key.clientloaded.open_hud_editor",
+				"key.clientmodules.open_hud_editor",
 				InputConstants.Type.KEYSYM,
 				GLFW.GLFW_KEY_H,
 				KeyMapping.Category.MISC

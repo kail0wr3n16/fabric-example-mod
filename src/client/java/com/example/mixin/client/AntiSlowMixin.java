@@ -12,7 +12,7 @@ import net.minecraft.client.player.LocalPlayer;
 @Mixin(LocalPlayer.class)
 public class AntiSlowMixin {
     @Inject(method = "isSlowDueToUsingItem", at = @At("HEAD"), cancellable = true)
-    private void clientloaded$antiSlowState(CallbackInfoReturnable<Boolean> cir) {
+    private void clientmodules$antiSlowState(CallbackInfoReturnable<Boolean> cir) {
         AntiSlowModule module = AntiSlowModule.getInstance();
         if (module == null || !module.isEnabled()) {
             return;
@@ -25,7 +25,7 @@ public class AntiSlowMixin {
     }
 
     @Inject(method = "itemUseSpeedMultiplier", at = @At("HEAD"), cancellable = true)
-    private void clientloaded$antiSlowMultiplier(CallbackInfoReturnable<Float> cir) {
+    private void clientmodules$antiSlowMultiplier(CallbackInfoReturnable<Float> cir) {
         AntiSlowModule module = AntiSlowModule.getInstance();
         if (module == null || !module.isEnabled()) {
             return;

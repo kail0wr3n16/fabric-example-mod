@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:/Users/Kai Morgan/GitHub/minecraft-mods/fabric-example-mod/src/client/java\" -name \"*.java\" -exec sed -i 's/clientloaded/clientmodules/g' {} \\\\;)",
+      "Bash(powershell -Command \"Rename-Item -Path 'C:\\\\Users\\\\Kai Morgan\\\\GitHub\\\\minecraft-mods\\\\fabric-example-mod' -NewName 'client-modules'\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Kai Morgan\\GitHub\\minecraft-mods"
+    ]
+  }
+}

@@ -13,7 +13,7 @@ public class ToggleSneakModule extends Module {
 	@Override
 	public KeyMapping createDefaultKeybind(String modId) {
 		return new KeyMapping(
-			"key.clientloaded.toggle_sneak",
+			"key.clientmodules.toggle_sneak",
 			InputConstants.Type.KEYSYM,
 			InputConstants.UNKNOWN.getValue(),
 			KeyMapping.Category.MISC
