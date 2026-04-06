@@ -27,6 +27,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.client.Minecraft;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -83,6 +84,79 @@ public class ExampleModClient implements ClientModInitializer {
 								context.getSource().sendFeedback(Component.literal(status.toString()));
 								return 1;
 							})
+					)
+					.then(
+						ClientCommands.literal("config")
+							.then(
+								ClientCommands.literal("save")
+									.then(
+										ClientCommands.argument("name", StringArgumentType.word())
+											.executes(context -> {
+												String configName = StringArgumentType.getString(context, "name");
+												Minecraft client = Minecraft.getInstance();
+												if (client == null) {
+													context.getSource().sendFeedback(Component.literal("Client not ready"));
+													return 0;
+												}
+
+												try {
+													moduleManager.saveNamedConfig(client, configName);
+													context.getSource().sendFeedback(Component.literal("Saved config: " + configName));
+													return 1;
+												} catch (IllegalArgumentException e) {
+													context.getSource().sendFeedback(Component.literal(e.getMessage()));
+													return 0;
+												}
+											})
+									)
+							)
+							.then(
+								ClientCommands.literal("load")
+									.then(
+										ClientCommands.argument("name", StringArgumentType.word())
+											.suggests(this::suggestConfigNames)
+											.executes(context -> {
+												String configName = StringArgumentType.getString(context, "name");
+												Minecraft client = Minecraft.getInstance();
+												if (client == null) {
+													context.getSource().sendFeedback(Component.literal("Client not ready"));
+													return 0;
+												}
+
+												try {
+													boolean loaded = moduleManager.loadNamedConfig(client, configName);
+													if (!loaded) {
+														context.getSource().sendFeedback(Component.literal("Config not found: " + configName));
+														return 0;
+													}
+													context.getSource().sendFeedback(Component.literal("Loaded config: " + configName));
+													return 1;
+												} catch (IllegalArgumentException e) {
+													context.getSource().sendFeedback(Component.literal(e.getMessage()));
+													return 0;
+												}
+											})
+									)
+							)
+							.then(
+								ClientCommands.literal("list")
+									.executes(context -> {
+										Minecraft client = Minecraft.getInstance();
+										if (client == null) {
+											context.getSource().sendFeedback(Component.literal("Client not ready"));
+											return 0;
+										}
+
+										List<String> configs = moduleManager.listConfigNames(client);
+										if (configs.isEmpty()) {
+											context.getSource().sendFeedback(Component.literal("No configs found"));
+											return 1;
+										}
+
+										context.getSource().sendFeedback(Component.literal("Configs: " + String.join(", ", configs)));
+										return 1;
+									})
+							)
 					)
 					.then(
 						ClientCommands.literal("module")
@@ -271,5 +345,14 @@ public class ExampleModClient implements ClientModInitializer {
 		}
 
 		return Suggestions.empty();
+	}
+
+	private CompletableFuture<Suggestions> suggestConfigNames(CommandContext<?> context, SuggestionsBuilder builder) {
+		Minecraft client = Minecraft.getInstance();
+		if (client == null) {
+			return Suggestions.empty();
+		}
+
+		return SharedSuggestionProvider.suggest(moduleManager.listConfigNames(client), builder);
 	}
 }

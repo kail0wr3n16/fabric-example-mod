@@ -2,6 +2,7 @@ package com.example.module;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.regex.Pattern;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -29,15 +31,19 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
 public class ModuleManager {
-	private static final String CONFIG_FILE = "clientloaded-config.properties";
+	private static final String CONFIG_DIR = "clientloaded/configs";
+	private static final String CONFIG_EXTENSION = ".properties";
+	private static final String DEFAULT_CONFIG_NAME = "default";
 	private static final long SAVE_DEBOUNCE_MS = 350L;
 	private static final String[] HUD_ELEMENT_IDS = new String[] { "watermark", "fps", "coordinates", "modulelist" };
+	private static final Pattern VALID_CONFIG_NAME = Pattern.compile("[A-Za-z0-9_-]+");
 
 	private final Map<String, Module> modules = new LinkedHashMap<>();
 	private final ScheduledExecutorService saveExecutor = Executors.newSingleThreadScheduledExecutor(new ConfigSaveThreadFactory());
 	private ScheduledFuture<?> pendingSaveTask;
 	private HudManager hudManager;
 	private boolean applyingPersistedState;
+	private String activeConfigName = DEFAULT_CONFIG_NAME;
 
 	public void register(Module module) {
 		modules.put(module.getName(), module);
@@ -103,11 +109,74 @@ public class ModuleManager {
 	}
 
 	public void loadEnabledStates(Minecraft client) {
-		Path configFile = getConfigFile(client);
+		Path configFile = getConfigFile(client, activeConfigName);
 		if (!Files.exists(configFile)) {
 			return;
 		}
 
+		loadConfigFromFile(configFile);
+	}
+
+	public void saveEnabledStates(Minecraft client) {
+		synchronized (this) {
+			if (pendingSaveTask != null) {
+				pendingSaveTask.cancel(false);
+				pendingSaveTask = null;
+			}
+		}
+		saveConfigNow(client, activeConfigName);
+	}
+
+	public void saveNamedConfig(Minecraft client, String configName) {
+		String normalized = normalizeConfigName(configName);
+		saveConfigNow(client, normalized);
+	}
+
+	public boolean loadNamedConfig(Minecraft client, String configName) {
+		String normalized = normalizeConfigName(configName);
+		Path configFile = getConfigFile(client, normalized);
+		if (!Files.exists(configFile)) {
+			return false;
+		}
+
+		loadConfigFromFile(configFile);
+		activeConfigName = normalized;
+		notifyConfigChanged();
+		return true;
+	}
+
+	public List<String> listConfigNames(Minecraft client) {
+		Path configDir = getConfigDirectory(client);
+		if (!Files.exists(configDir)) {
+			return Collections.emptyList();
+		}
+
+		List<String> names = new ArrayList<>();
+		try (var stream = Files.list(configDir)) {
+			stream
+				.filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(CONFIG_EXTENSION))
+				.forEach(path -> {
+					String fileName = path.getFileName().toString();
+					names.add(fileName.substring(0, fileName.length() - CONFIG_EXTENSION.length()));
+				});
+		} catch (IOException e) {
+			System.err.println("[clientloaded] Failed to list configs: " + e.getMessage());
+			return Collections.emptyList();
+		}
+
+		Collections.sort(names);
+		return names;
+	}
+
+	public String getActiveConfigName() {
+		return activeConfigName;
+	}
+
+	public void notifyConfigChanged() {
+		scheduleConfigSave();
+	}
+
+	private void loadConfigFromFile(Path configFile) {
 		Properties props = new Properties();
 		try (InputStream in = Files.newInputStream(configFile)) {
 			props.load(in);
@@ -168,16 +237,8 @@ public class ModuleManager {
 		}
 	}
 
-	public void saveEnabledStates(Minecraft client) {
-		saveConfigNow(client);
-	}
-
-	public void notifyConfigChanged() {
-		scheduleConfigSave();
-	}
-
-	private void saveConfigNow(Minecraft client) {
-		Path configFile = getConfigFile(client);
+	private void saveConfigNow(Minecraft client, String configName) {
+		Path configFile = getConfigFile(client, configName);
 		Path tempFile = configFile.resolveSibling(configFile.getFileName() + ".tmp");
 		try {
 			Files.createDirectories(configFile.getParent());
@@ -219,8 +280,25 @@ public class ModuleManager {
 		}
 	}
 
-	private Path getConfigFile(Minecraft client) {
-		return client.gameDirectory.toPath().resolve("config").resolve(CONFIG_FILE);
+	private Path getConfigDirectory(Minecraft client) {
+		return client.gameDirectory.toPath().resolve("config").resolve(CONFIG_DIR);
+	}
+
+	private Path getConfigFile(Minecraft client, String configName) {
+		return getConfigDirectory(client).resolve(configName + CONFIG_EXTENSION);
+	}
+
+	private String normalizeConfigName(String configName) {
+		if (configName == null) {
+			throw new IllegalArgumentException("Config name cannot be null");
+		}
+
+		String trimmed = configName.trim();
+		if (trimmed.isEmpty() || !VALID_CONFIG_NAME.matcher(trimmed).matches()) {
+			throw new IllegalArgumentException("Invalid config name. Use letters, numbers, '_' or '-'.");
+		}
+
+		return trimmed.toLowerCase();
 	}
 
 	private synchronized void scheduleConfigSave() {
@@ -235,7 +313,7 @@ public class ModuleManager {
 		pendingSaveTask = saveExecutor.schedule(() -> {
 			Minecraft client = Minecraft.getInstance();
 			if (client != null) {
-				saveConfigNow(client);
+				saveConfigNow(client, activeConfigName);
 			}
 		}, SAVE_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
 	}
