@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.example.ui.ClientColors;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -35,20 +36,18 @@ public class ModuleManager {
 		for (Module module : modules.values()) {
 			KeyMapping keybind = module.createDefaultKeybind(modId);
 			if (keybind != null) {
-				module.setKeybind(KeyMappingHelper.registerKeyMapping(keybind));
-			}
-		}
-	}
+				KeyMapping registeredKeybind = KeyMappingHelper.registerKeyMapping(keybind);
 
-	public void handleKeyInput(Minecraft client) {
-		for (Module module : modules.values()) {
-			KeyMapping keybind = module.getKeybind();
-			if (keybind == null) {
-				continue;
-			}
+				// Migrate legacy overlay binding that used Right Shift before GUI got it.
+				if ("overlay".equals(module.getName())) {
+					InputConstants.Key bound = KeyMappingHelper.getBoundKeyOf(registeredKeybind);
+					if (bound.getType() == InputConstants.Type.KEYSYM && bound.getValue() == org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT) {
+						registeredKeybind.setKey(registeredKeybind.getDefaultKey());
+						KeyMapping.resetMapping();
+					}
+				}
 
-			while (keybind.consumeClick()) {
-				module.toggle();
+				module.setKeybind(registeredKeybind);
 			}
 		}
 	}

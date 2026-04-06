@@ -4,14 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import org.lwjgl.glfw.GLFW;
 
-import com.example.gui.ClickGuiScreen;
+import com.example.input.InputHandler;
 import com.example.module.Module;
 import com.example.module.FullbrightModule;
 import com.example.module.ModuleManager;
@@ -25,10 +23,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -40,33 +36,14 @@ public class ExampleModClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		KeyMapping openGuiKey = KeyMappingHelper.registerKeyMapping(
-			new KeyMapping(
-				"key.clientloaded.open_gui",
-				InputConstants.Type.KEYSYM,
-				GLFW.GLFW_KEY_RIGHT_SHIFT,
-				KeyMapping.Category.MISC
-			)
-		);
-
 		moduleManager.register(new OverlayModule());
 		moduleManager.register(new SprintModule());
 		moduleManager.register(new FullbrightModule());
 		moduleManager.registerKeybinds(MOD_ID);
+		InputHandler inputHandler = new InputHandler(moduleManager);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			boolean openedGui = false;
-			while (openGuiKey.consumeClick()) {
-				if (!(client.screen instanceof ClickGuiScreen)) {
-					client.setScreen(new ClickGuiScreen());
-				}
-				openedGui = true;
-			}
-
-			if (!openedGui && client.screen == null) {
-				moduleManager.handleKeyInput(client);
-			}
-
+			inputHandler.handleInput(client);
 			moduleManager.tick(client);
 		});
 

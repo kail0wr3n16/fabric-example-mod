@@ -34,7 +34,7 @@ public class OverlayModule extends Module {
 		return new KeyMapping(
 			"key.clientloaded.toggle_overlay",
 			InputConstants.Type.KEYSYM,
-			GLFW.GLFW_KEY_O,
+			GLFW.GLFW_KEY_N,
 			KeyMapping.Category.MISC
 		);
 	}
