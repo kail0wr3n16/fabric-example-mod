@@ -19,7 +19,7 @@ public class CrystalDangerAlertModule extends Module {
     private float flashTimer = 0f;
 
     public CrystalDangerAlertModule() {
-        super("crystaldanger", ModuleCategory.COMBAT, false);
+        super("crystaldanger", ModuleCategory.HUD, false);
         this.dangerRange = addSetting(new NumberSetting("dangerRange", 6.0, 2.0, 15.0));
         this.tntRange = addSetting(new NumberSetting("tntRange", 8.0, 2.0, 20.0));
     }

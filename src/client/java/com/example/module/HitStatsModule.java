@@ -24,7 +24,7 @@ public class HitStatsModule extends Module {
     private int totalHits = 0;
 
     public HitStatsModule() {
-        super("hitstats", ModuleCategory.COMBAT, false);
+        super("hitstats", ModuleCategory.HUD, false);
         this.showDistance = addSetting(new BooleanSetting("showDistance", true));
         this.showInterval = addSetting(new BooleanSetting("showInterval", true));
     }

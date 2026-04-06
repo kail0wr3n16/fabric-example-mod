@@ -45,7 +45,7 @@ public class WaypointsModule extends Module {
     private int colorIndex = 0;
 
     public WaypointsModule() {
-        super("waypoints", ModuleCategory.MISC, false);
+        super("waypoints", ModuleCategory.QOL, false);
         this.maxDisplay = addSetting(new NumberSetting("maxDisplay", 5.0, 1.0, 10.0));
         this.showEta = addSetting(new BooleanSetting("showEta", true));
         this.displayRange = addSetting(new NumberSetting("displayRange", 500.0, 50.0, 5000.0));

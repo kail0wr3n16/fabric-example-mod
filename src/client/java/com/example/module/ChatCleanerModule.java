@@ -24,7 +24,7 @@ public class ChatCleanerModule extends Module {
     private final List<Long> recentTimestamps = new ArrayList<>();
 
     public ChatCleanerModule() {
-        super("chatcleaner", ModuleCategory.MISC, false);
+        super("chatcleaner", ModuleCategory.SOCIAL, false);
         this.filterJoinLeave = addSetting(new BooleanSetting("filterJoinLeave", false));
         this.filterAdvancement = addSetting(new BooleanSetting("filterAdvancement", true));
         this.filterDeathMessages = addSetting(new BooleanSetting("filterDeathMessages", false));

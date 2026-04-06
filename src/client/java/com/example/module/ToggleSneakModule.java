@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft;
 
 public class ToggleSneakModule extends Module {
 	public ToggleSneakModule() {
-		super("toggleSneak", ModuleCategory.MOVEMENT, false);
+		super("toggleSneak", ModuleCategory.ACCESSIBILITY, false);
 	}
 
 	@Override

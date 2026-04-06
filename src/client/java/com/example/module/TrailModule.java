@@ -78,7 +78,7 @@ public class TrailModule extends Module {
             double rz = (-dx * sinYaw + dz * cosYaw) * scale;
 
             int px = cx + (int)rx;
-            int pz = cy + (int)rz;
+            int pz = cy - (int)rz;  // negate: forward (+Z world) = up on screen
 
             if (px < mx + 2 || px >= mx + mapSize - 2 || pz < my + 2 || pz >= my + mapSize - 2) continue;
 

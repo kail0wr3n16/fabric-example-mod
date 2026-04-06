@@ -12,7 +12,7 @@ public class ParkourAssistModule extends Module {
     private final BooleanSetting onlyWhenSprinting;
 
     public ParkourAssistModule() {
-        super("parkourassist", ModuleCategory.MOVEMENT, false);
+        super("parkourassist", ModuleCategory.QOL, false);
         this.edgeTriggerDist = addSetting(new NumberSetting("edgeTriggerDist", 0.4, 0.1, 1.0));
         this.onlyWhenSprinting = addSetting(new BooleanSetting("onlyWhenSprinting", true));
     }

@@ -20,7 +20,7 @@ public class TargetInfoModule extends Module {
     private float displayAlpha = 0f;
 
     public TargetInfoModule() {
-        super("targetinfo", ModuleCategory.COMBAT, false);
+        super("targetinfo", ModuleCategory.HUD, false);
         this.maxRange = addSetting(new NumberSetting("maxRange", 8.0, 1.0, 20.0));
         this.showArmor = addSetting(new BooleanSetting("showArmor", true));
         this.preferCrosshair = addSetting(new BooleanSetting("preferCrosshair", true));

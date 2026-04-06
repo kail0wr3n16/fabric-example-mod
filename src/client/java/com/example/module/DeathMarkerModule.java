@@ -8,7 +8,7 @@ public class DeathMarkerModule extends Module {
     private int deathCount = 0;
 
     public DeathMarkerModule() {
-        super("deathmarker", ModuleCategory.MISC, true);
+        super("deathmarker", ModuleCategory.QOL, true);
     }
 
     @Override

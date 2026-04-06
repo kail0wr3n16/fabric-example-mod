@@ -17,7 +17,7 @@ public class DurabilityWatchModule extends Module {
     private int scanTick = 0;
 
     public DurabilityWatchModule() {
-        super("durabilitywatch", ModuleCategory.MISC, false);
+        super("durabilitywatch", ModuleCategory.HUD, false);
         this.warnPercent = addSetting(new NumberSetting("warnPercent", 15.0, 5.0, 50.0));
     }
 

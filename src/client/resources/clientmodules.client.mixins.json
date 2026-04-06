@@ -5,12 +5,11 @@
   "client": [
     "LightmapRenderStateExtractorMixin",
     "CameraMixin",
+    "CrosshairMixin",
     "MouseHandlerMixin",
     "KeyMappingAccessor",
-    "InventoryMoveMixin",
     "SafeWalkMixin",
-    "AntiSlowMixin",
-    "FastPlaceMixin"
+    "FovMemoryMixin"
   ],
   "injectors": {
     "defaultRequire": 1

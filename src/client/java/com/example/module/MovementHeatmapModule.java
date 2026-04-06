@@ -19,7 +19,7 @@ public class MovementHeatmapModule extends Module {
     private static final int MAX_SAMPLES = 600; // ~30s at 20tps
 
     public MovementHeatmapModule() {
-        super("movementheatmap", ModuleCategory.MOVEMENT, false);
+        super("movementheatmap", ModuleCategory.RENDER, false);
         this.showRaw = addSetting(new BooleanSetting("showRaw", false));
     }
 

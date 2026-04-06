@@ -4,7 +4,7 @@ public class SafeWalkModule extends Module {
     private static SafeWalkModule INSTANCE;
 
     public SafeWalkModule() {
-        super("safewalk", ModuleCategory.MOVEMENT, false);
+        super("safewalk", ModuleCategory.ACCESSIBILITY, false);
         INSTANCE = this;
     }
 

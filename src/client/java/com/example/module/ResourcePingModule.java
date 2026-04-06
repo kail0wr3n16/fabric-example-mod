@@ -40,7 +40,7 @@ public class ResourcePingModule extends Module {
     };
 
     public ResourcePingModule() {
-        super("resourceping", ModuleCategory.MISC, false);
+        super("resourceping", ModuleCategory.QOL, false);
         this.scanRange = addSetting(new NumberSetting("scanRange", 8.0, 4.0, 16.0));
         this.ores = addSetting(new BooleanSetting("ores", true));
         this.chests = addSetting(new BooleanSetting("chests", true));

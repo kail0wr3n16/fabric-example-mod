@@ -14,7 +14,7 @@ public class FocusModeModule extends Module {
 	private float currentAlpha;
 
 	public FocusModeModule(ModuleManager moduleManager) {
-		super("focusmode", ModuleCategory.RENDER, false);
+		super("focusmode", ModuleCategory.ACCESSIBILITY, false);
 		this.moduleManager = moduleManager;
 		this.radius = addSetting(new NumberSetting("radius", 110.0, 60.0, 220.0));
 		this.dimAlpha = addSetting(new NumberSetting("dimAlpha", 0.40, 0.10, 0.80));

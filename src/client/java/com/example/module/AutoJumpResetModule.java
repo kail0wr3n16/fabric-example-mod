@@ -11,7 +11,7 @@ public class AutoJumpResetModule extends Module {
     private int ticksSinceLanded = 0;
 
     public AutoJumpResetModule() {
-        super("jumpReset", ModuleCategory.MOVEMENT, false);
+        super("jumpReset", ModuleCategory.QOL, false);
         this.jumpInterval = addSetting(new NumberSetting("jumpInterval", 1.0, 1.0, 5.0));
     }
 

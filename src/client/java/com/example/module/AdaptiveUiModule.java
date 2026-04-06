@@ -22,7 +22,7 @@ public class AdaptiveUiModule extends Module {
 	private final BooleanSetting autoFocusInCombat;
 
 	public AdaptiveUiModule() {
-		super("adaptiveui", ModuleCategory.MISC, true);
+		super("adaptiveui", ModuleCategory.RENDER, true);
 		this.adaptiveMode = addSetting(new BooleanSetting("adaptiveMode", true));
 		this.cleanUiMode = addSetting(new BooleanSetting("cleanUiMode", false));
 		this.showContextNotifications = addSetting(new BooleanSetting("showContextNotifications", true));

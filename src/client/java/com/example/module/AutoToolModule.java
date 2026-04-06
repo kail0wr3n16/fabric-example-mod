@@ -17,7 +17,7 @@ public class AutoToolModule extends Module {
     private int lastSelectedSlot = -1;
 
     public AutoToolModule() {
-        super("autotool", ModuleCategory.MISC, false);
+        super("autotool", ModuleCategory.QOL, false);
         this.ignoreDurability = addSetting(new BooleanSetting("ignoreDurability", false));
     }
 

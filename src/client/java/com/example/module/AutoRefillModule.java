@@ -10,7 +10,7 @@ public class AutoRefillModule extends Module {
     private int cooldown = 0;
 
     public AutoRefillModule() {
-        super("autorefill", ModuleCategory.MISC, false);
+        super("autorefill", ModuleCategory.QOL, false);
         this.refillThreshold = addSetting(new NumberSetting("refillThreshold", 8.0, 1.0, 32.0));
     }
 

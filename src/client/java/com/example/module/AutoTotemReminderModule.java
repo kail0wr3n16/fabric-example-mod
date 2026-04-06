@@ -13,7 +13,7 @@ public class AutoTotemReminderModule extends Module {
     private float flashTimer = 0f;
 
     public AutoTotemReminderModule() {
-        super("totemreminder", ModuleCategory.COMBAT, false);
+        super("totemreminder", ModuleCategory.HUD, false);
         this.warnThreshold = addSetting(new NumberSetting("warnThreshold", 3.0, 1.0, 16.0));
     }
 

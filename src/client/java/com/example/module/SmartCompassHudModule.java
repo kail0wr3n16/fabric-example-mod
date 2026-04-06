@@ -13,7 +13,7 @@ public class SmartCompassHudModule extends Module {
     private final NumberSetting yPos;
 
     public SmartCompassHudModule() {
-        super("smartcompass", ModuleCategory.MISC, false);
+        super("smartcompass", ModuleCategory.HUD, false);
         this.showWaypoint = addSetting(new BooleanSetting("showWaypoint", true));
         this.yPos = addSetting(new NumberSetting("yPos", 26.0, 5.0, 80.0));
     }
