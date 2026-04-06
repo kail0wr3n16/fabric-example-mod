@@ -1,10 +1,21 @@
 package com.example;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import com.example.module.Module;
 import com.example.module.ModuleManager;
 import com.example.module.OverlayModule;
+import com.example.module.SprintModule;
+import com.example.module.setting.BooleanSetting;
+import com.example.module.setting.NumberSetting;
+import com.example.module.setting.Setting;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -12,6 +23,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -23,6 +35,7 @@ public class ExampleModClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		moduleManager.register(new OverlayModule());
+		moduleManager.register(new SprintModule());
 		moduleManager.registerKeybinds(MOD_ID);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -36,7 +49,7 @@ public class ExampleModClient implements ClientModInitializer {
 			dispatcher.register(
 				ClientCommands.literal("clientloaded")
 					.executes(context -> {
-						context.getSource().sendFeedback(Component.literal("Usage: /clientloaded ping"));
+						context.getSource().sendFeedback(Component.literal("Usage: /clientloaded ping|modules|module ..."));
 						return 1;
 					})
 					.then(
@@ -64,6 +77,44 @@ public class ExampleModClient implements ClientModInitializer {
 						ClientCommands.literal("module")
 							.then(
 								ClientCommands.argument("name", StringArgumentType.word())
+									.suggests(this::suggestModuleNames)
+									.then(
+										ClientCommands.literal("setting")
+											.then(
+												ClientCommands.argument("setting", StringArgumentType.word())
+													.suggests(this::suggestModuleSettingNames)
+													.then(
+														ClientCommands.argument("value", StringArgumentType.word())
+															.suggests(this::suggestSettingValues)
+															.executes(context -> {
+																String moduleName = StringArgumentType.getString(context, "name");
+																String settingName = StringArgumentType.getString(context, "setting");
+																String value = StringArgumentType.getString(context, "value");
+
+																Module module = moduleManager.get(moduleName);
+																if (module == null) {
+																	context.getSource().sendFeedback(Component.literal("Unknown module: " + moduleName));
+																	return 0;
+																}
+
+																Setting<?> setting = module.getSetting(settingName);
+																if (setting == null) {
+																	context.getSource().sendFeedback(Component.literal("Unknown setting: " + settingName));
+																	return 0;
+																}
+
+																boolean applied = applySettingValue(setting, value);
+																if (!applied) {
+																	context.getSource().sendFeedback(Component.literal("Invalid value for setting " + settingName + ": " + value));
+																	return 0;
+																}
+
+																context.getSource().sendFeedback(Component.literal("Set " + moduleName + "." + settingName + " = " + setting.getValue()));
+																return 1;
+															})
+													)
+											)
+									)
 									.then(
 										ClientCommands.literal("on")
 											.executes(context -> {
@@ -133,5 +184,81 @@ public class ExampleModClient implements ClientModInitializer {
 				client.player.sendSystemMessage(Component.literal("Client loaded successfully"));
 			}
 		});
+	}
+
+	private static boolean applySettingValue(Setting<?> setting, String rawValue) {
+		if (setting instanceof BooleanSetting booleanSetting) {
+			if ("toggle".equalsIgnoreCase(rawValue)) {
+				booleanSetting.setValue(!booleanSetting.isEnabled());
+				return true;
+			}
+
+			if ("on".equalsIgnoreCase(rawValue) || "true".equalsIgnoreCase(rawValue)) {
+				booleanSetting.setValue(true);
+				return true;
+			}
+
+			if ("off".equalsIgnoreCase(rawValue) || "false".equalsIgnoreCase(rawValue)) {
+				booleanSetting.setValue(false);
+				return true;
+			}
+
+			return false;
+		}
+
+		if (setting instanceof NumberSetting numberSetting) {
+			try {
+				numberSetting.setValue(Double.parseDouble(rawValue));
+				return true;
+			} catch (NumberFormatException ignored) {
+				return false;
+			}
+		}
+
+		return false;
+	}
+
+	private CompletableFuture<Suggestions> suggestModuleNames(CommandContext<?> context, SuggestionsBuilder builder) {
+		List<String> names = new ArrayList<>();
+		for (Module module : moduleManager.all()) {
+			names.add(module.getName());
+		}
+		return SharedSuggestionProvider.suggest(names, builder);
+	}
+
+	private CompletableFuture<Suggestions> suggestModuleSettingNames(CommandContext<?> context, SuggestionsBuilder builder) {
+		String moduleName = StringArgumentType.getString(context, "name");
+		Module module = moduleManager.get(moduleName);
+		if (module == null) {
+			return Suggestions.empty();
+		}
+
+		List<String> settingNames = new ArrayList<>();
+		for (Setting<?> setting : module.getSettings()) {
+			settingNames.add(setting.getName());
+		}
+
+		return SharedSuggestionProvider.suggest(settingNames, builder);
+	}
+
+	private CompletableFuture<Suggestions> suggestSettingValues(CommandContext<?> context, SuggestionsBuilder builder) {
+		String moduleName = StringArgumentType.getString(context, "name");
+		String settingName = StringArgumentType.getString(context, "setting");
+
+		Module module = moduleManager.get(moduleName);
+		if (module == null) {
+			return Suggestions.empty();
+		}
+
+		Setting<?> setting = module.getSetting(settingName);
+		if (setting instanceof BooleanSetting) {
+			return SharedSuggestionProvider.suggest(List.of("on", "off", "toggle", "true", "false"), builder);
+		}
+
+		if (setting instanceof NumberSetting) {
+			return SharedSuggestionProvider.suggest(List.of("0", "1", "2", "3"), builder);
+		}
+
+		return Suggestions.empty();
 	}
 }

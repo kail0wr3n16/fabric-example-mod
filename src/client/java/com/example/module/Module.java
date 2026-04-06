@@ -1,5 +1,11 @@
 package com.example.module;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.example.module.setting.Setting;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -9,6 +15,7 @@ public abstract class Module {
 	private final String name;
 	private boolean enabled;
 	private KeyMapping keybind;
+	private final Map<String, Setting<?>> settings = new LinkedHashMap<>();
 
 	protected Module(String name, boolean enabledByDefault) {
 		this.name = name;
@@ -41,6 +48,19 @@ public abstract class Module {
 
 	public KeyMapping createDefaultKeybind(String modId) {
 		return null;
+	}
+
+	public <T extends Setting<?>> T addSetting(T setting) {
+		settings.put(setting.getName(), setting);
+		return setting;
+	}
+
+	public Setting<?> getSetting(String settingName) {
+		return settings.get(settingName);
+	}
+
+	public Collection<Setting<?>> getSettings() {
+		return settings.values();
 	}
 
 	public void onTick(Minecraft client) {
