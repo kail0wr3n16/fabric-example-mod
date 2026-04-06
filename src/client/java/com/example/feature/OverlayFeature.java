@@ -21,12 +21,29 @@ public class OverlayFeature extends BaseClientFeature {
 
 	private void renderTopLeftOverlay(GuiGraphicsExtractor guiGraphics) {
 		Minecraft client = Minecraft.getInstance();
+		Component fpsText = Component.literal("FPS: " + client.getFps());
+		Component coordsText = buildCoordsText(client);
 		int x = Math.max(MARGIN, guiGraphics.guiWidth() / 200);
 		int y = Math.max(MARGIN, guiGraphics.guiHeight() / 200);
-		int textWidth = client.font.width(OVERLAY_TEXT);
+		int textWidth = Math.max(
+			Math.max(client.font.width(OVERLAY_TEXT), client.font.width(fpsText)),
+			client.font.width(coordsText)
+		);
 		int textHeight = 9;
+		int lineGap = 2;
+		int boxHeight = (textHeight * 3) + (lineGap * 2);
 
-		guiGraphics.fill(x - PADDING, y - PADDING, x + textWidth + PADDING, y + textHeight + PADDING, 0x90000000);
+		guiGraphics.fill(x - PADDING, y - PADDING, x + textWidth + PADDING, y + boxHeight + PADDING, 0x90000000);
 		guiGraphics.text(client.font, OVERLAY_TEXT, x, y, 0xFFFFFFFF, true);
+		guiGraphics.text(client.font, fpsText, x, y + textHeight + lineGap, 0xFFFFFFFF, true);
+		guiGraphics.text(client.font, coordsText, x, y + ((textHeight + lineGap) * 2), 0xFFFFFFFF, true);
+	}
+
+	private Component buildCoordsText(Minecraft client) {
+		if (client.player == null) {
+			return Component.literal("XYZ: -, -, -");
+		}
+
+		return Component.literal(String.format("XYZ: %.1f, %.1f, %.1f", client.player.getX(), client.player.getY(), client.player.getZ()));
 	}
 }
