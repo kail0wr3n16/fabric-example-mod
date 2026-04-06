@@ -10,12 +10,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ModuleListHudElement extends HudElement {
-	private static final int HUD_MARGIN = 6;
+	private static final int DEFAULT_X = 6;
+	private static final int DEFAULT_Y = 6;
 	private static final int HUD_LINE_HEIGHT = 10;
 
 	private final ModuleManager moduleManager;
 
 	public ModuleListHudElement(ModuleManager moduleManager) {
+		super(DEFAULT_X, DEFAULT_Y);
 		this.moduleManager = moduleManager;
 	}
 
@@ -30,7 +32,7 @@ public class ModuleListHudElement extends HudElement {
 	}
 
 	@Override
-	public int render(GuiGraphicsExtractor guiGraphics, Minecraft client, int x, int y, int lineHeight, int lineGap, int textColor) {
+	public void render(GuiGraphicsExtractor guiGraphics, Minecraft client, int lineHeight, int lineGap, int textColor) {
 		List<String> enabledModuleNames = new ArrayList<>();
 
 		for (Module module : moduleManager.all()) {
@@ -42,11 +44,9 @@ public class ModuleListHudElement extends HudElement {
 		for (int i = 0; i < enabledModuleNames.size(); i++) {
 			String moduleName = enabledModuleNames.get(i);
 			int textWidth = client.font.width(moduleName);
-			int textX = guiGraphics.guiWidth() - HUD_MARGIN - textWidth;
-			int textY = HUD_MARGIN + (i * HUD_LINE_HEIGHT);
+			int textX = guiGraphics.guiWidth() - getX() - textWidth;
+			int textY = getY() + (i * HUD_LINE_HEIGHT);
 			guiGraphics.text(client.font, moduleName, textX, textY, textColor, true);
 		}
-
-		return y;
 	}
 }

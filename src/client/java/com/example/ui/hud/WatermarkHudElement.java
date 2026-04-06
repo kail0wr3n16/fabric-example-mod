@@ -6,6 +6,12 @@ import net.minecraft.network.chat.Component;
 
 public class WatermarkHudElement extends HudElement {
 	private static final Component WATERMARK_TEXT = Component.literal("Client Active");
+	private static final int DEFAULT_X = 6;
+	private static final int DEFAULT_Y = 6;
+
+	public WatermarkHudElement() {
+		super(DEFAULT_X, DEFAULT_Y);
+	}
 
 	@Override
 	public int getLineCount(Minecraft client) {
@@ -18,8 +24,7 @@ public class WatermarkHudElement extends HudElement {
 	}
 
 	@Override
-	public int render(GuiGraphicsExtractor guiGraphics, Minecraft client, int x, int y, int lineHeight, int lineGap, int textColor) {
-		guiGraphics.text(client.font, WATERMARK_TEXT, x, y, textColor, true);
-		return y + lineHeight + lineGap;
+	public void render(GuiGraphicsExtractor guiGraphics, Minecraft client, int lineHeight, int lineGap, int textColor) {
+		guiGraphics.text(client.font, WATERMARK_TEXT, getX(), getY(), textColor, true);
 	}
 }

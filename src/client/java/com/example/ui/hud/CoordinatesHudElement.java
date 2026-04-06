@@ -7,6 +7,13 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 public class CoordinatesHudElement extends HudElement {
+	private static final int DEFAULT_X = 6;
+	private static final int DEFAULT_Y = 28;
+
+	public CoordinatesHudElement() {
+		super(DEFAULT_X, DEFAULT_Y);
+	}
+
 	@Override
 	public int getLineCount(Minecraft client) {
 		return 2;
@@ -20,14 +27,15 @@ public class CoordinatesHudElement extends HudElement {
 	}
 
 	@Override
-	public int render(GuiGraphicsExtractor guiGraphics, Minecraft client, int x, int y, int lineHeight, int lineGap, int textColor) {
+	public void render(GuiGraphicsExtractor guiGraphics, Minecraft client, int lineHeight, int lineGap, int textColor) {
 		Component coordsText = buildCoordsText(client);
+		int x = getX();
+		int y = getY();
 		guiGraphics.text(client.font, coordsText, x, y, textColor, true);
 		y += lineHeight + lineGap;
 
 		Component speedText = buildSpeedText(client);
 		guiGraphics.text(client.font, speedText, x, y, textColor, true);
-		return y + lineHeight + lineGap;
 	}
 
 	private Component buildCoordsText(Minecraft client) {

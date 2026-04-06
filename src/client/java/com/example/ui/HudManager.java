@@ -1,5 +1,7 @@
 package com.example.ui;
 
+import java.util.List;
+
 import com.example.module.Module;
 import com.example.module.ModuleManager;
 import com.example.ui.hud.CoordinatesHudElement;
@@ -13,7 +15,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class HudManager {
-	private static final int OVERLAY_MARGIN = 6;
 	private static final int OVERLAY_PADDING = 3;
 	private static final int TEXT_HEIGHT = 9;
 	private static final int LINE_GAP = 2;
@@ -23,6 +24,9 @@ public class HudManager {
 	private final FpsHudElement fpsElement = new FpsHudElement();
 	private final CoordinatesHudElement coordinatesElement = new CoordinatesHudElement();
 	private final ModuleListHudElement moduleListElement;
+
+	public record HudElementBounds(String elementId, String label, int x, int y, int width, int height, boolean enabled, boolean rightAligned) {
+	}
 
 	public HudManager(ModuleManager moduleManager) {
 		this.moduleManager = moduleManager;
@@ -39,7 +43,7 @@ public class HudManager {
 
 		if (moduleListElement.isEnabled()) {
 			Minecraft client = Minecraft.getInstance();
-			moduleListElement.render(guiGraphics, client, 0, 0, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
+			moduleListElement.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
 		}
 	}
 
@@ -61,18 +65,36 @@ public class HudManager {
 			return;
 		}
 
-		int x = Math.max(OVERLAY_MARGIN, guiGraphics.guiWidth() / 200);
-		int y = Math.max(OVERLAY_MARGIN, guiGraphics.guiHeight() / 200);
-		int boxHeight = (TEXT_HEIGHT * lineCount) + (LINE_GAP * (lineCount - 1));
+		int minX = Integer.MAX_VALUE;
+		int minY = Integer.MAX_VALUE;
+		int maxX = Integer.MIN_VALUE;
+		int maxY = Integer.MIN_VALUE;
 
-		guiGraphics.fill(x - OVERLAY_PADDING, y - OVERLAY_PADDING, x + textWidth + OVERLAY_PADDING, y + boxHeight + OVERLAY_PADDING, 0x90000000);
-
-		int nextY = y;
 		for (HudElement element : elements) {
 			if (!element.isEnabled()) {
 				continue;
 			}
-			nextY = element.render(guiGraphics, client, x, nextY, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
+
+			int elementX = element.getX();
+			int elementY = element.getY();
+			int elementWidth = element.getMaxWidth(client);
+			int elementHeight = (TEXT_HEIGHT * element.getLineCount(client)) + (LINE_GAP * Math.max(0, element.getLineCount(client) - 1));
+
+			minX = Math.min(minX, elementX);
+			minY = Math.min(minY, elementY);
+			maxX = Math.max(maxX, elementX + elementWidth);
+			maxY = Math.max(maxY, elementY + elementHeight);
+		}
+
+		if (minX <= maxX && minY <= maxY) {
+			guiGraphics.fill(minX - OVERLAY_PADDING, minY - OVERLAY_PADDING, maxX + OVERLAY_PADDING, maxY + OVERLAY_PADDING, 0x90000000);
+		}
+
+		for (HudElement element : elements) {
+			if (!element.isEnabled()) {
+				continue;
+			}
+			element.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, ClientColors.PRIMARY_TEXT_ARGB);
 		}
 	}
 
@@ -95,5 +117,76 @@ public class HudManager {
 			case "modulelist" -> moduleListElement.isEnabled();
 			default -> false;
 		};
+	}
+
+	public void setElementPosition(String elementId, int x, int y) {
+		switch (elementId.toLowerCase()) {
+			case "watermark" -> {
+				watermarkElement.setX(x);
+				watermarkElement.setY(y);
+			}
+			case "fps" -> {
+				fpsElement.setX(x);
+				fpsElement.setY(y);
+			}
+			case "coordinates" -> {
+				coordinatesElement.setX(x);
+				coordinatesElement.setY(y);
+			}
+			case "modulelist" -> {
+				moduleListElement.setX(x);
+				moduleListElement.setY(y);
+			}
+			default -> {
+			}
+		}
+	}
+
+	public int getElementX(String elementId) {
+		return switch (elementId.toLowerCase()) {
+			case "watermark" -> watermarkElement.getX();
+			case "fps" -> fpsElement.getX();
+			case "coordinates" -> coordinatesElement.getX();
+			case "modulelist" -> moduleListElement.getX();
+			default -> 0;
+		};
+	}
+
+	public int getElementY(String elementId) {
+		return switch (elementId.toLowerCase()) {
+			case "watermark" -> watermarkElement.getY();
+			case "fps" -> fpsElement.getY();
+			case "coordinates" -> coordinatesElement.getY();
+			case "modulelist" -> moduleListElement.getY();
+			default -> 0;
+		};
+	}
+
+	public List<HudElementBounds> getElementBounds(Minecraft client, int guiWidth) {
+		List<HudElementBounds> result = new java.util.ArrayList<>();
+		result.add(buildBounds("watermark", "Watermark", watermarkElement, client, guiWidth, false));
+		result.add(buildBounds("fps", "FPS", fpsElement, client, guiWidth, false));
+		result.add(buildBounds("coordinates", "Coordinates", coordinatesElement, client, guiWidth, false));
+		result.add(buildBounds("modulelist", "Module List", moduleListElement, client, guiWidth, true));
+		return result;
+	}
+
+	private HudElementBounds buildBounds(String id, String label, HudElement element, Minecraft client, int guiWidth, boolean rightAligned) {
+		int width = Math.max(20, element.getMaxWidth(client));
+		int lineCount = Math.max(1, element.getLineCount(client));
+		int height = (TEXT_HEIGHT * lineCount) + (LINE_GAP * Math.max(0, lineCount - 1));
+		int x = rightAligned ? guiWidth - element.getX() - width : element.getX();
+		int y = element.getY();
+		return new HudElementBounds(id, label, x, y, width, height, element.isEnabled(), rightAligned);
+	}
+
+	public void setElementPositionFromScreen(String elementId, int screenX, int screenY, int guiWidth, int elementWidth) {
+		if ("modulelist".equalsIgnoreCase(elementId)) {
+			int rightMargin = Math.max(0, guiWidth - screenX - elementWidth);
+			setElementPosition(elementId, rightMargin, screenY);
+			return;
+		}
+
+		setElementPosition(elementId, Math.max(0, screenX), Math.max(0, screenY));
 	}
 }

@@ -7,6 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
 import com.example.gui.ClickGuiScreen;
+import com.example.gui.HudEditorScreen;
 import com.example.module.Module;
 import com.example.module.ModuleManager;
 import com.example.ui.HudManager;
@@ -19,8 +20,10 @@ public class InputHandler {
 	private final ModuleManager moduleManager;
 	private final HudManager hudManager;
 	private final KeyMapping openGuiKey;
+	private final KeyMapping openHudEditorKey;
 	private final Map<String, Boolean> previousModuleKeyStates = new HashMap<>();
 	private boolean previousGuiKeyDown;
+	private boolean previousHudEditorKeyDown;
 	private boolean reconciledLegacyBindings;
 
 	public InputHandler(ModuleManager moduleManager, HudManager hudManager) {
@@ -34,6 +37,14 @@ public class InputHandler {
 				KeyMapping.Category.MISC
 			)
 		);
+		this.openHudEditorKey = KeyMappingHelper.registerKeyMapping(
+			new KeyMapping(
+				"key.clientloaded.open_hud_editor",
+				InputConstants.Type.KEYSYM,
+				GLFW.GLFW_KEY_H,
+				KeyMapping.Category.MISC
+			)
+		);
 	}
 
 	public void handleInput(Minecraft client) {
@@ -42,6 +53,18 @@ public class InputHandler {
 		boolean guiKeyDown = isBindingDown(client, openGuiKey);
 		boolean guiPressed = guiKeyDown && !previousGuiKeyDown;
 		previousGuiKeyDown = guiKeyDown;
+
+		boolean hudEditorKeyDown = isBindingDown(client, openHudEditorKey);
+		boolean hudEditorPressed = hudEditorKeyDown && !previousHudEditorKeyDown;
+		previousHudEditorKeyDown = hudEditorKeyDown;
+
+		if (hudEditorPressed) {
+			if (client.screen instanceof HudEditorScreen) {
+				client.setScreen(null);
+			} else {
+				client.setScreen(new HudEditorScreen(moduleManager, hudManager));
+			}
+		}
 
 		if (guiPressed && !(client.screen instanceof ClickGuiScreen)) {
 			client.setScreen(new ClickGuiScreen(moduleManager, hudManager));

@@ -228,6 +228,18 @@ public class ModuleManager {
 					if (hudRaw != null) {
 						hudManager.setElementEnabled(elementId, Boolean.parseBoolean(hudRaw));
 					}
+
+					String xRaw = props.getProperty("hud." + elementId + ".x");
+					String yRaw = props.getProperty("hud." + elementId + ".y");
+					if (xRaw != null && yRaw != null) {
+						try {
+							int x = Integer.parseInt(xRaw);
+							int y = Integer.parseInt(yRaw);
+							hudManager.setElementPosition(elementId, x, y);
+						} catch (NumberFormatException ignored) {
+							// Ignore invalid saved position values.
+						}
+					}
 				}
 			}
 
@@ -263,6 +275,8 @@ public class ModuleManager {
 		if (hudManager != null) {
 			for (String elementId : HUD_ELEMENT_IDS) {
 				props.setProperty("hud." + elementId, Boolean.toString(hudManager.isElementEnabled(elementId)));
+				props.setProperty("hud." + elementId + ".x", Integer.toString(hudManager.getElementX(elementId)));
+				props.setProperty("hud." + elementId + ".y", Integer.toString(hudManager.getElementY(elementId)));
 			}
 		}
 
