@@ -1,5 +1,7 @@
 package com.example.module;
 
+import java.util.Locale;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
@@ -46,16 +48,20 @@ public class OverlayModule extends Module {
 		Minecraft client = Minecraft.getInstance();
 		Component fpsText = Component.literal("FPS: " + client.getFps());
 		Component coordsText = buildCoordsText(client);
+		Component speedText = buildSpeedText(client);
 		boolean renderFps = showFps.isEnabled();
 		int x = Math.max(MARGIN, guiGraphics.guiWidth() / 200);
 		int y = Math.max(MARGIN, guiGraphics.guiHeight() / 200);
-		int textWidth = Math.max(client.font.width(OVERLAY_TEXT), client.font.width(coordsText));
+		int textWidth = Math.max(
+			Math.max(client.font.width(OVERLAY_TEXT), client.font.width(coordsText)),
+			client.font.width(speedText)
+		);
 		if (renderFps) {
 			textWidth = Math.max(textWidth, client.font.width(fpsText));
 		}
 		int textHeight = 9;
 		int lineGap = 2;
-		int lines = renderFps ? 3 : 2;
+		int lines = renderFps ? 4 : 3;
 		int boxHeight = (textHeight * lines) + (lineGap * (lines - 1));
 
 		guiGraphics.fill(x - PADDING, y - PADDING, x + textWidth + PADDING, y + boxHeight + PADDING, 0x90000000);
@@ -68,6 +74,8 @@ public class OverlayModule extends Module {
 		}
 
 		guiGraphics.text(client.font, coordsText, x, nextY, ClientColors.PRIMARY_TEXT_ARGB, true);
+		nextY += textHeight + lineGap;
+		guiGraphics.text(client.font, speedText, x, nextY, ClientColors.PRIMARY_TEXT_ARGB, true);
 	}
 
 	private Component buildCoordsText(Minecraft client) {
@@ -77,6 +85,15 @@ public class OverlayModule extends Module {
 
 		int decimals = coordDecimals.asInt();
 		String format = "XYZ: %." + decimals + "f, %." + decimals + "f, %." + decimals + "f";
-		return Component.literal(String.format(format, client.player.getX(), client.player.getY(), client.player.getZ()));
+		return Component.literal(String.format(Locale.ROOT, format, client.player.getX(), client.player.getY(), client.player.getZ()));
+	}
+
+	private Component buildSpeedText(Minecraft client) {
+		if (client.player == null) {
+			return Component.literal("Speed: -");
+		}
+
+		double blocksPerSecond = client.player.getDeltaMovement().horizontalDistance() * 20.0;
+		return Component.literal(String.format(Locale.ROOT, "Speed: %.2f b/s", blocksPerSecond));
 	}
 }

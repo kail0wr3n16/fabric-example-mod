@@ -10,6 +10,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 import com.example.module.Module;
+import com.example.module.FullbrightModule;
 import com.example.module.ModuleManager;
 import com.example.module.OverlayModule;
 import com.example.module.SprintModule;
@@ -36,6 +37,7 @@ public class ExampleModClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		moduleManager.register(new OverlayModule());
 		moduleManager.register(new SprintModule());
+		moduleManager.register(new FullbrightModule());
 		moduleManager.registerKeybinds(MOD_ID);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {

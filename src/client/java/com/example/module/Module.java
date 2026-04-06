@@ -31,11 +31,20 @@ public abstract class Module {
 	}
 
 	public void setEnabled(boolean enabled) {
+		if (this.enabled == enabled) {
+			return;
+		}
+
 		this.enabled = enabled;
+		if (enabled) {
+			onEnable();
+		} else {
+			onDisable();
+		}
 	}
 
 	public void toggle() {
-		enabled = !enabled;
+		setEnabled(!enabled);
 	}
 
 	public KeyMapping getKeybind() {
@@ -67,5 +76,11 @@ public abstract class Module {
 	}
 
 	public void onHudRender(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {
+	}
+
+	protected void onEnable() {
+	}
+
+	protected void onDisable() {
 	}
 }
