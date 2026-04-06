@@ -13,7 +13,8 @@ public class SprintModule extends Module {
 			return;
 		}
 
-		boolean isMoving = client.player.input.getMoveVector().lengthSquared() > 0.0F;
-		client.player.setSprinting(isMoving);
+		boolean hasForwardInput = client.player.input.hasForwardImpulse();
+		boolean canSprint = hasForwardInput && !client.player.isCrouching() && !client.player.isUsingItem();
+		client.player.setSprinting(canSprint);
 	}
 }
