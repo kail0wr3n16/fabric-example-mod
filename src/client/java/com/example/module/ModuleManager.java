@@ -2,6 +2,7 @@ package com.example.module;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,29 @@ public class ModuleManager {
 
 	public Collection<Module> all() {
 		return modules.values();
+	}
+
+	public List<Module> getByCategory(ModuleCategory category) {
+		List<Module> result = new ArrayList<>();
+		for (Module module : modules.values()) {
+			if (module.getCategory() == category) {
+				result.add(module);
+			}
+		}
+		return result;
+	}
+
+	public Map<ModuleCategory, List<Module>> getGroupedByCategory() {
+		Map<ModuleCategory, List<Module>> grouped = new EnumMap<>(ModuleCategory.class);
+		for (ModuleCategory category : ModuleCategory.values()) {
+			grouped.put(category, new ArrayList<>());
+		}
+
+		for (Module module : modules.values()) {
+			grouped.get(module.getCategory()).add(module);
+		}
+
+		return grouped;
 	}
 
 	public void registerKeybinds(String modId) {

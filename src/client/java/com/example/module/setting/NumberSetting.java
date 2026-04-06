@@ -26,4 +26,12 @@ public class NumberSetting extends Setting<Double> {
 	public int asInt() {
 		return (int) Math.round(getValue());
 	}
+
+	public double getMin() {
+		return min;
+	}
+
+	public double getMax() {
+		return max;
+	}
 }

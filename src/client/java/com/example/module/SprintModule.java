@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 
 public class SprintModule extends Module {
 	public SprintModule() {
-		super("sprint", false);
+		super("sprint", ModuleCategory.MOVEMENT, false);
 	}
 
 	@Override

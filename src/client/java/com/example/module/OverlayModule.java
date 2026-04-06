@@ -24,7 +24,7 @@ public class OverlayModule extends Module {
 	private final NumberSetting coordDecimals;
 
 	public OverlayModule() {
-		super("overlay", false);
+		super("overlay", ModuleCategory.RENDER, false);
 		this.showFps = addSetting(new BooleanSetting("showFps", true));
 		this.coordDecimals = addSetting(new NumberSetting("coordDecimals", 1.0, 0.0, 3.0));
 	}
