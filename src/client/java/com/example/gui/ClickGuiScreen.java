@@ -17,6 +17,7 @@ import com.example.module.setting.BooleanSetting;
 import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
 import com.example.ui.ClientColors;
+import com.example.ui.HudManager;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -38,9 +39,11 @@ public class ClickGuiScreen extends Screen {
 	private static final int SETTING_GAP = 3;
 
 	private final ModuleManager moduleManager;
+	private final HudManager hudManager;
 	private final Set<String> expandedModules = new HashSet<>();
 	private final List<ModuleRowHitbox> moduleHitboxes = new ArrayList<>();
 	private final List<BindHitbox> bindHitboxes = new ArrayList<>();
+	private final List<HudToggleHitbox> hudToggleHitboxes = new ArrayList<>();
 	private final List<BooleanSettingHitbox> booleanSettingHitboxes = new ArrayList<>();
 	private final List<NumberAdjustHitbox> numberAdjustHitboxes = new ArrayList<>();
 	private final List<NumberValueHitbox> numberValueHitboxes = new ArrayList<>();
@@ -48,15 +51,17 @@ public class ClickGuiScreen extends Screen {
 	private String numberInputBuffer = "";
 	private Module listeningBindModule = null;
 
-	public ClickGuiScreen(ModuleManager moduleManager) {
+	public ClickGuiScreen(ModuleManager moduleManager, HudManager hudManager) {
 		super(Component.literal("My Client"));
 		this.moduleManager = moduleManager;
+		this.hudManager = hudManager;
 	}
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float deltaTicks) {
 		moduleHitboxes.clear();
 		bindHitboxes.clear();
+		hudToggleHitboxes.clear();
 		booleanSettingHitboxes.clear();
 		numberAdjustHitboxes.clear();
 		numberValueHitboxes.clear();
@@ -112,6 +117,9 @@ public class ClickGuiScreen extends Screen {
 			height += MODULE_ROW_HEIGHT;
 			if (expandedModules.contains(module.getName())) {
 				height += SETTING_ROW_HEIGHT + SETTING_GAP;
+				if ("overlay".equals(module.getName())) {
+					height += (SETTING_ROW_HEIGHT + SETTING_GAP) * 4;
+				}
 				for (Setting<?> setting : module.getSettings()) {
 					height += SETTING_ROW_HEIGHT + SETTING_GAP;
 				}
@@ -142,6 +150,12 @@ public class ClickGuiScreen extends Screen {
 		int nextY = rowBottom;
 		if (expandedModules.contains(module.getName())) {
 			nextY = renderBindRow(guiGraphics, module, rowLeft + 6, rowRight - 6, nextY);
+			if ("overlay".equals(module.getName())) {
+				nextY = renderHudToggleRow(guiGraphics, "watermark", "watermark", rowLeft + 6, rowRight - 6, nextY);
+				nextY = renderHudToggleRow(guiGraphics, "fps", "fps", rowLeft + 6, rowRight - 6, nextY);
+				nextY = renderHudToggleRow(guiGraphics, "coordinates", "coordinates", rowLeft + 6, rowRight - 6, nextY);
+				nextY = renderHudToggleRow(guiGraphics, "modulelist", "moduleList", rowLeft + 6, rowRight - 6, nextY);
+			}
 			for (Setting<?> setting : module.getSettings()) {
 				nextY = renderSettingRow(guiGraphics, setting, rowLeft + 6, rowRight - 6, nextY);
 			}
@@ -164,6 +178,23 @@ public class ClickGuiScreen extends Screen {
 		guiGraphics.text(this.font, bindValue, right - bindWidth - 6, rowY + 2, bindColor, false);
 
 		bindHitboxes.add(new BindHitbox(module, left, rowY, right, rowBottom));
+		return rowBottom + SETTING_GAP;
+	}
+
+	private int renderHudToggleRow(GuiGraphicsExtractor guiGraphics, String elementId, String label, int left, int right, int rowY) {
+		int rowBottom = rowY + SETTING_ROW_HEIGHT;
+		guiGraphics.fill(left, rowY, right, rowBottom, 0x22000000);
+
+		guiGraphics.text(this.font, Component.literal(label), left + 3, rowY + 2, 0xFFC8D0DE, false);
+
+		boolean enabled = hudManager.isElementEnabled(elementId);
+		Component value = Component.literal(enabled ? "ON" : "OFF");
+		int valueWidth = this.font.width(value);
+		int valueLeft = right - valueWidth - 6;
+		int valueColor = enabled ? 0xFF77E38E : 0xFF9AA3B2;
+		guiGraphics.text(this.font, value, valueLeft, rowY + 2, valueColor, false);
+
+		hudToggleHitboxes.add(new HudToggleHitbox(elementId, valueLeft - 3, rowY, right, rowBottom));
 		return rowBottom + SETTING_GAP;
 	}
 
@@ -272,6 +303,15 @@ public class ClickGuiScreen extends Screen {
 				}
 			}
 
+			for (HudToggleHitbox hitbox : hudToggleHitboxes) {
+				if (hitbox.contains(mouseX, mouseY)) {
+					boolean next = !hudManager.isElementEnabled(hitbox.elementId());
+					hudManager.setElementEnabled(hitbox.elementId(), next);
+					moduleManager.notifyConfigChanged();
+					return true;
+				}
+			}
+
 			for (NumberAdjustHitbox hitbox : numberAdjustHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
 					if (editingNumberSetting != hitbox.setting()) {
@@ -350,9 +390,7 @@ public class ClickGuiScreen extends Screen {
 			if (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
 				moduleKeybind.setKey(InputConstants.UNKNOWN);
 				KeyMapping.resetMapping();
-				if (this.minecraft != null && this.minecraft.options != null) {
-					this.minecraft.options.save();
-				}
+				moduleManager.notifyConfigChanged();
 				listeningBindModule = null;
 				return true;
 			}
@@ -364,9 +402,7 @@ public class ClickGuiScreen extends Screen {
 
 			moduleKeybind.setKey(pressedKey);
 			KeyMapping.resetMapping();
-			if (this.minecraft != null && this.minecraft.options != null) {
-				this.minecraft.options.save();
-			}
+			moduleManager.notifyConfigChanged();
 			listeningBindModule = null;
 			return true;
 		}
@@ -444,6 +480,12 @@ public class ClickGuiScreen extends Screen {
 	}
 
 	private record BindHitbox(Module module, int left, int top, int right, int bottom) {
+		private boolean contains(double x, double y) {
+			return x >= left && x <= right && y >= top && y <= bottom;
+		}
+	}
+
+	private record HudToggleHitbox(String elementId, int left, int top, int right, int bottom) {
 		private boolean contains(double x, double y) {
 			return x >= left && x <= right && y >= top && y <= bottom;
 		}

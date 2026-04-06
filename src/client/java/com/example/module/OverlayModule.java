@@ -1,32 +1,13 @@
 package com.example.module;
 
-import java.util.Locale;
-
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
-import com.example.module.setting.BooleanSetting;
-import com.example.module.setting.NumberSetting;
-import com.example.ui.ClientColors;
-
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 
 public class OverlayModule extends Module {
-	private static final Component OVERLAY_TEXT = Component.literal("Client Active");
-	private static final int MARGIN = 6;
-	private static final int PADDING = 3;
-	private final BooleanSetting showFps;
-	private final NumberSetting coordDecimals;
-
 	public OverlayModule() {
 		super("overlay", ModuleCategory.RENDER, false);
-		this.showFps = addSetting(new BooleanSetting("showFps", true));
-		this.coordDecimals = addSetting(new NumberSetting("coordDecimals", 1.0, 0.0, 3.0));
 	}
 
 	@Override
@@ -37,63 +18,5 @@ public class OverlayModule extends Module {
 			GLFW.GLFW_KEY_N,
 			KeyMapping.Category.MISC
 		);
-	}
-
-	@Override
-	public void onHudRender(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {
-		renderTopLeftOverlay(guiGraphics);
-	}
-
-	private void renderTopLeftOverlay(GuiGraphicsExtractor guiGraphics) {
-		Minecraft client = Minecraft.getInstance();
-		Component fpsText = Component.literal("FPS: " + client.getFps());
-		Component coordsText = buildCoordsText(client);
-		Component speedText = buildSpeedText(client);
-		boolean renderFps = showFps.isEnabled();
-		int x = Math.max(MARGIN, guiGraphics.guiWidth() / 200);
-		int y = Math.max(MARGIN, guiGraphics.guiHeight() / 200);
-		int textWidth = Math.max(
-			Math.max(client.font.width(OVERLAY_TEXT), client.font.width(coordsText)),
-			client.font.width(speedText)
-		);
-		if (renderFps) {
-			textWidth = Math.max(textWidth, client.font.width(fpsText));
-		}
-		int textHeight = 9;
-		int lineGap = 2;
-		int lines = renderFps ? 4 : 3;
-		int boxHeight = (textHeight * lines) + (lineGap * (lines - 1));
-
-		guiGraphics.fill(x - PADDING, y - PADDING, x + textWidth + PADDING, y + boxHeight + PADDING, 0x90000000);
-		guiGraphics.text(client.font, OVERLAY_TEXT, x, y, ClientColors.PRIMARY_TEXT_ARGB, true);
-
-		int nextY = y + textHeight + lineGap;
-		if (renderFps) {
-			guiGraphics.text(client.font, fpsText, x, nextY, ClientColors.PRIMARY_TEXT_ARGB, true);
-			nextY += textHeight + lineGap;
-		}
-
-		guiGraphics.text(client.font, coordsText, x, nextY, ClientColors.PRIMARY_TEXT_ARGB, true);
-		nextY += textHeight + lineGap;
-		guiGraphics.text(client.font, speedText, x, nextY, ClientColors.PRIMARY_TEXT_ARGB, true);
-	}
-
-	private Component buildCoordsText(Minecraft client) {
-		if (client.player == null) {
-			return Component.literal("XYZ: -, -, -");
-		}
-
-		int decimals = coordDecimals.asInt();
-		String format = "XYZ: %." + decimals + "f, %." + decimals + "f, %." + decimals + "f";
-		return Component.literal(String.format(Locale.ROOT, format, client.player.getX(), client.player.getY(), client.player.getZ()));
-	}
-
-	private Component buildSpeedText(Minecraft client) {
-		if (client.player == null) {
-			return Component.literal("Speed: -");
-		}
-
-		double blocksPerSecond = client.player.getDeltaMovement().horizontalDistance() * 20.0;
-		return Component.literal(String.format(Locale.ROOT, "Speed: %.2f b/s", blocksPerSecond));
 	}
 }

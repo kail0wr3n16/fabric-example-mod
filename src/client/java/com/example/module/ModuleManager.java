@@ -7,31 +7,48 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.example.ui.ClientColors;
-import net.minecraft.client.DeltaTracker;
+import com.example.module.setting.BooleanSetting;
+import com.example.module.setting.NumberSetting;
+import com.example.module.setting.Setting;
+import com.example.ui.HudManager;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ModuleManager {
-	private static final int HUD_MARGIN = 6;
-	private static final int HUD_LINE_HEIGHT = 10;
-	private static final String MODULE_STATE_FILE = "clientloaded-modules.properties";
+	private static final String CONFIG_FILE = "clientloaded-config.properties";
+	private static final long SAVE_DEBOUNCE_MS = 350L;
+	private static final String[] HUD_ELEMENT_IDS = new String[] { "watermark", "fps", "coordinates", "modulelist" };
 
 	private final Map<String, Module> modules = new LinkedHashMap<>();
+	private final ScheduledExecutorService saveExecutor = Executors.newSingleThreadScheduledExecutor(new ConfigSaveThreadFactory());
+	private ScheduledFuture<?> pendingSaveTask;
+	private HudManager hudManager;
 	private boolean applyingPersistedState;
 
 	public void register(Module module) {
 		modules.put(module.getName(), module);
 		module.setStateChangeListener(this::onModuleStateChanged);
+		for (Setting<?> setting : module.getSettings()) {
+			setting.setChangeListener(this::onSettingChanged);
+		}
+	}
+
+	public void setHudManager(HudManager hudManager) {
+		this.hudManager = hudManager;
 	}
 
 	public Module get(String name) {
@@ -86,37 +103,84 @@ public class ModuleManager {
 	}
 
 	public void loadEnabledStates(Minecraft client) {
-		Path stateFile = getStateFile(client);
-		if (!Files.exists(stateFile)) {
+		Path configFile = getConfigFile(client);
+		if (!Files.exists(configFile)) {
 			return;
 		}
 
 		Properties props = new Properties();
-		try (InputStream in = Files.newInputStream(stateFile)) {
+		try (InputStream in = Files.newInputStream(configFile)) {
 			props.load(in);
 		} catch (IOException e) {
-			System.err.println("[clientloaded] Failed to load module states: " + e.getMessage());
+			System.err.println("[clientloaded] Failed to load config: " + e.getMessage());
 			return;
 		}
 
 		applyingPersistedState = true;
 		try {
 			for (Module module : modules.values()) {
-				String raw = props.getProperty(module.getName());
-				if (raw == null) {
-					continue;
+				String enabledRaw = props.getProperty("module.enabled." + module.getName());
+				if (enabledRaw != null) {
+					module.setEnabled(Boolean.parseBoolean(enabledRaw));
 				}
-				module.setEnabled(Boolean.parseBoolean(raw));
+
+				for (Setting<?> setting : module.getSettings()) {
+					String settingRaw = props.getProperty("setting." + module.getName() + "." + setting.getName());
+					if (settingRaw == null) {
+						continue;
+					}
+
+					if (setting instanceof BooleanSetting booleanSetting) {
+						booleanSetting.setValue(Boolean.parseBoolean(settingRaw));
+					} else if (setting instanceof NumberSetting numberSetting) {
+						try {
+							numberSetting.setValue(Double.parseDouble(settingRaw));
+						} catch (NumberFormatException ignored) {
+							// Ignore invalid stored number values.
+						}
+					}
+				}
+
+				if (module.getKeybind() != null) {
+					String keybindRaw = props.getProperty("keybind." + module.getName());
+					if (keybindRaw != null) {
+						try {
+							module.getKeybind().setKey(InputConstants.getKey(keybindRaw));
+						} catch (IllegalArgumentException ignored) {
+							// Ignore invalid saved key strings.
+						}
+					}
+				}
 			}
+
+			if (hudManager != null) {
+				for (String elementId : HUD_ELEMENT_IDS) {
+					String hudRaw = props.getProperty("hud." + elementId);
+					if (hudRaw != null) {
+						hudManager.setElementEnabled(elementId, Boolean.parseBoolean(hudRaw));
+					}
+				}
+			}
+
+			KeyMapping.resetMapping();
 		} finally {
 			applyingPersistedState = false;
 		}
 	}
 
 	public void saveEnabledStates(Minecraft client) {
-		Path stateFile = getStateFile(client);
+		saveConfigNow(client);
+	}
+
+	public void notifyConfigChanged() {
+		scheduleConfigSave();
+	}
+
+	private void saveConfigNow(Minecraft client) {
+		Path configFile = getConfigFile(client);
+		Path tempFile = configFile.resolveSibling(configFile.getFileName() + ".tmp");
 		try {
-			Files.createDirectories(stateFile.getParent());
+			Files.createDirectories(configFile.getParent());
 		} catch (IOException e) {
 			System.err.println("[clientloaded] Failed to create config directory: " + e.getMessage());
 			return;
@@ -124,28 +188,72 @@ public class ModuleManager {
 
 		Properties props = new Properties();
 		for (Module module : modules.values()) {
-			props.setProperty(module.getName(), Boolean.toString(module.isEnabled()));
+			props.setProperty("module.enabled." + module.getName(), Boolean.toString(module.isEnabled()));
+
+			for (Setting<?> setting : module.getSettings()) {
+				props.setProperty("setting." + module.getName() + "." + setting.getName(), setting.getValue().toString());
+			}
+
+			if (module.getKeybind() != null) {
+				props.setProperty("keybind." + module.getName(), module.getKeybind().saveString());
+			}
 		}
 
-		try (OutputStream out = Files.newOutputStream(stateFile)) {
-			props.store(out, "Clientloaded module enabled states");
+		if (hudManager != null) {
+			for (String elementId : HUD_ELEMENT_IDS) {
+				props.setProperty("hud." + elementId, Boolean.toString(hudManager.isElementEnabled(elementId)));
+			}
+		}
+
+		try (OutputStream out = Files.newOutputStream(tempFile)) {
+			props.store(out, "Clientloaded config");
+			out.flush();
+			Files.move(tempFile, configFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			System.err.println("[clientloaded] Failed to save module states: " + e.getMessage());
+			try {
+				Files.move(tempFile, configFile, StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException ignored) {
+				// Best-effort fallback already failed.
+			}
+			System.err.println("[clientloaded] Failed to save config: " + e.getMessage());
 		}
 	}
 
-	private Path getStateFile(Minecraft client) {
-		return client.gameDirectory.toPath().resolve("config").resolve(MODULE_STATE_FILE);
+	private Path getConfigFile(Minecraft client) {
+		return client.gameDirectory.toPath().resolve("config").resolve(CONFIG_FILE);
 	}
 
-	private void onModuleStateChanged() {
+	private synchronized void scheduleConfigSave() {
 		if (applyingPersistedState) {
 			return;
 		}
 
-		Minecraft client = Minecraft.getInstance();
-		if (client != null) {
-			saveEnabledStates(client);
+		if (pendingSaveTask != null) {
+			pendingSaveTask.cancel(false);
+		}
+
+		pendingSaveTask = saveExecutor.schedule(() -> {
+			Minecraft client = Minecraft.getInstance();
+			if (client != null) {
+				saveConfigNow(client);
+			}
+		}, SAVE_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+	}
+
+	private void onModuleStateChanged() {
+		scheduleConfigSave();
+	}
+
+	private void onSettingChanged() {
+		scheduleConfigSave();
+	}
+
+	private static final class ConfigSaveThreadFactory implements ThreadFactory {
+		@Override
+		public Thread newThread(Runnable runnable) {
+			Thread thread = new Thread(runnable, "clientloaded-config-save");
+			thread.setDaemon(true);
+			return thread;
 		}
 	}
 
@@ -154,35 +262,6 @@ public class ModuleManager {
 			if (module.isEnabled()) {
 				module.onTick(client);
 			}
-		}
-	}
-
-	public void renderHud(GuiGraphicsExtractor guiGraphics, DeltaTracker tickCounter) {
-		for (Module module : modules.values()) {
-			if (module.isEnabled()) {
-				module.onHudRender(guiGraphics, tickCounter);
-			}
-		}
-
-		renderEnabledModulesList(guiGraphics);
-	}
-
-	private void renderEnabledModulesList(GuiGraphicsExtractor guiGraphics) {
-		Minecraft client = Minecraft.getInstance();
-		List<String> enabledModuleNames = new ArrayList<>();
-
-		for (Module module : modules.values()) {
-			if (module.isEnabled()) {
-				enabledModuleNames.add(module.getName());
-			}
-		}
-
-		for (int i = 0; i < enabledModuleNames.size(); i++) {
-			String moduleName = enabledModuleNames.get(i);
-			int textWidth = client.font.width(moduleName);
-			int x = guiGraphics.guiWidth() - HUD_MARGIN - textWidth;
-			int y = HUD_MARGIN + (i * HUD_LINE_HEIGHT);
-			guiGraphics.text(client.font, moduleName, x, y, ClientColors.PRIMARY_TEXT_ARGB, true);
 		}
 	}
 }

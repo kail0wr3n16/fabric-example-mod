@@ -9,6 +9,7 @@ import org.lwjgl.glfw.GLFW;
 import com.example.gui.ClickGuiScreen;
 import com.example.module.Module;
 import com.example.module.ModuleManager;
+import com.example.ui.HudManager;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
@@ -16,13 +17,15 @@ import net.minecraft.client.Minecraft;
 
 public class InputHandler {
 	private final ModuleManager moduleManager;
+	private final HudManager hudManager;
 	private final KeyMapping openGuiKey;
 	private final Map<String, Boolean> previousModuleKeyStates = new HashMap<>();
 	private boolean previousGuiKeyDown;
 	private boolean reconciledLegacyBindings;
 
-	public InputHandler(ModuleManager moduleManager) {
+	public InputHandler(ModuleManager moduleManager, HudManager hudManager) {
 		this.moduleManager = moduleManager;
+		this.hudManager = hudManager;
 		this.openGuiKey = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping(
 				"key.clientloaded.open_gui",
@@ -41,7 +44,7 @@ public class InputHandler {
 		previousGuiKeyDown = guiKeyDown;
 
 		if (guiPressed && !(client.screen instanceof ClickGuiScreen)) {
-			client.setScreen(new ClickGuiScreen(moduleManager));
+			client.setScreen(new ClickGuiScreen(moduleManager, hudManager));
 		}
 
 		boolean allowModuleToggle = client.screen == null;

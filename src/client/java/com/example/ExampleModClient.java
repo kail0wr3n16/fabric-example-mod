@@ -18,6 +18,7 @@ import com.example.module.SprintModule;
 import com.example.module.setting.BooleanSetting;
 import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
+import com.example.ui.HudManager;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -34,21 +35,23 @@ public class ExampleModClient implements ClientModInitializer {
 	private static final String MOD_ID = "clientloaded";
 	private static final Identifier MODULES_HUD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "modules_hud");
 	private final ModuleManager moduleManager = new ModuleManager();
+	private final HudManager hudManager = new HudManager(moduleManager);
 
 	@Override
 	public void onInitializeClient() {
+		moduleManager.setHudManager(hudManager);
 		moduleManager.register(new OverlayModule());
 		moduleManager.register(new SprintModule());
 		moduleManager.register(new FullbrightModule());
 		moduleManager.registerKeybinds(MOD_ID);
-		InputHandler inputHandler = new InputHandler(moduleManager);
+		InputHandler inputHandler = new InputHandler(moduleManager, hudManager);
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			inputHandler.handleInput(client);
 			moduleManager.tick(client);
 		});
 
-		HudElementRegistry.addLast(MODULES_HUD_ID, moduleManager::renderHud);
+		HudElementRegistry.addLast(MODULES_HUD_ID, hudManager::renderHud);
 
 		ClientLifecycleEvents.CLIENT_STARTED.register(moduleManager::loadEnabledStates);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(moduleManager::saveEnabledStates);
