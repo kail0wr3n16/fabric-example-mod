@@ -19,6 +19,8 @@ import com.example.ui.ClientColors;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
@@ -30,14 +32,17 @@ public class ClickGuiScreen extends Screen {
 	private static final int PANEL_HEADER_HEIGHT = 20;
 	private static final int PANEL_PADDING = 8;
 	private static final int MODULE_ROW_HEIGHT = 14;
-	private static final int SETTING_ROW_HEIGHT = 12;
+	private static final int SETTING_ROW_HEIGHT = 22;
 	private static final int SETTING_GAP = 3;
 
 	private final ModuleManager moduleManager;
 	private final Set<String> expandedModules = new HashSet<>();
 	private final List<ModuleRowHitbox> moduleHitboxes = new ArrayList<>();
 	private final List<BooleanSettingHitbox> booleanSettingHitboxes = new ArrayList<>();
-	private final List<NumberSettingHitbox> numberSettingHitboxes = new ArrayList<>();
+	private final List<NumberAdjustHitbox> numberAdjustHitboxes = new ArrayList<>();
+	private final List<NumberValueHitbox> numberValueHitboxes = new ArrayList<>();
+	private NumberSetting editingNumberSetting = null;
+	private String numberInputBuffer = "";
 
 	public ClickGuiScreen(ModuleManager moduleManager) {
 		super(Component.literal("My Client"));
@@ -48,7 +53,8 @@ public class ClickGuiScreen extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float deltaTicks) {
 		moduleHitboxes.clear();
 		booleanSettingHitboxes.clear();
-		numberSettingHitboxes.clear();
+		numberAdjustHitboxes.clear();
+		numberValueHitboxes.clear();
 
 		int availableWidth = Math.max(100, this.width - (OUTER_MARGIN * 2));
 		int panelCount = ModuleCategory.values().length;
@@ -153,22 +159,44 @@ public class ClickGuiScreen extends Screen {
 			booleanSettingHitboxes.add(new BooleanSettingHitbox(booleanSetting, valueLeft - 3, rowY, right, rowBottom));
 		} else if (setting instanceof NumberSetting numberSetting) {
 			Component name = Component.literal(setting.getName());
-			guiGraphics.text(this.font, name, left + 3, rowY + 2, 0xFFC8D0DE, false);
+			guiGraphics.text(this.font, name, left + 3, rowY + 2, 0xFFADB5C0, false);
 
-			int sliderLeft = left + 65;
-			int sliderRight = right - 42;
-			int sliderY = rowY + 5;
-			guiGraphics.fill(sliderLeft, sliderY, sliderRight, sliderY + 2, 0x664A5568);
+			int buttonWidth = 10;
+			int valueWidth = 28;
+			int gap = 3;
+			int controlTop = rowY + 5;
+			int controlBottom = controlTop + 10;
 
-			double progress = (numberSetting.getValue() - numberSetting.getMin()) / (numberSetting.getMax() - numberSetting.getMin());
-			progress = Math.max(0.0, Math.min(1.0, progress));
-			int fillRight = sliderLeft + (int) Math.round((sliderRight - sliderLeft) * progress);
-			guiGraphics.fill(sliderLeft, sliderY, fillRight, sliderY + 2, ClientColors.PRIMARY_TEXT_ARGB);
+			int valueRight = right - 3;
+			int valueLeft = valueRight - valueWidth;
+			int incRight = valueLeft - gap;
+			int incLeft = incRight - buttonWidth;
+			int decRight = incLeft - gap;
+			int decLeft = decRight - buttonWidth;
 
-			Component valueText = Component.literal(String.format(Locale.ROOT, "%.2f", numberSetting.getValue()));
-			guiGraphics.text(this.font, valueText, right - 36, rowY + 2, 0xFFE6EAF2, false);
+			guiGraphics.fill(decLeft, controlTop, decRight, controlBottom, 0x334A5568);
+			guiGraphics.fill(incLeft, controlTop, incRight, controlBottom, 0x334A5568);
 
-			numberSettingHitboxes.add(new NumberSettingHitbox(numberSetting, sliderLeft, rowY, sliderRight, rowBottom));
+			int valueBoxColor = (editingNumberSetting == numberSetting) ? 0x553A4A62 : 0x334A5568;
+			guiGraphics.fill(valueLeft, controlTop, valueRight, controlBottom, valueBoxColor);
+
+			guiGraphics.text(this.font, Component.literal("-"), decLeft + 3, controlTop + 1, 0xFFE6EAF2, false);
+			guiGraphics.text(this.font, Component.literal("+"), incLeft + 3, controlTop + 1, 0xFFE6EAF2, false);
+
+			String shownValue;
+			if (editingNumberSetting == numberSetting) {
+				shownValue = numberInputBuffer.isEmpty() ? "_" : numberInputBuffer + "_";
+			} else {
+				shownValue = Long.toString(Math.round(numberSetting.getValue()));
+			}
+			Component valueText = Component.literal(shownValue);
+			int valueTextWidth = this.font.width(valueText);
+			int valueTextX = valueLeft + ((valueWidth - valueTextWidth) / 2);
+			guiGraphics.text(this.font, valueText, valueTextX, controlTop + 1, 0xFFE6EAF2, false);
+
+			numberAdjustHitboxes.add(new NumberAdjustHitbox(numberSetting, decLeft, controlTop, decRight, controlBottom, -1));
+			numberAdjustHitboxes.add(new NumberAdjustHitbox(numberSetting, incLeft, controlTop, incRight, controlBottom, 1));
+			numberValueHitboxes.add(new NumberValueHitbox(numberSetting, valueLeft, controlTop, valueRight, controlBottom));
 		}
 
 		return rowBottom + SETTING_GAP;
@@ -196,31 +224,124 @@ public class ClickGuiScreen extends Screen {
 		if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
 			for (BooleanSettingHitbox hitbox : booleanSettingHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
+					commitNumberInput();
 					hitbox.setting().setValue(!hitbox.setting().isEnabled());
 					return true;
 				}
 			}
 
-			for (NumberSettingHitbox hitbox : numberSettingHitboxes) {
+			for (NumberAdjustHitbox hitbox : numberAdjustHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
-					double sliderWidth = hitbox.right() - hitbox.left();
-					double t = (mouseX - hitbox.left()) / sliderWidth;
-					t = Math.max(0.0, Math.min(1.0, t));
-					double value = hitbox.setting().getMin() + ((hitbox.setting().getMax() - hitbox.setting().getMin()) * t);
-					hitbox.setting().setValue(value);
+					if (editingNumberSetting != hitbox.setting()) {
+						commitNumberInput();
+					}
+					adjustNumberSetting(hitbox.setting(), hitbox.delta());
+					return true;
+				}
+			}
+
+			for (NumberValueHitbox hitbox : numberValueHitboxes) {
+				if (hitbox.contains(mouseX, mouseY)) {
+					if (editingNumberSetting != hitbox.setting()) {
+						commitNumberInput();
+						editingNumberSetting = hitbox.setting();
+						numberInputBuffer = Long.toString(Math.round(hitbox.setting().getValue()));
+					}
 					return true;
 				}
 			}
 
 			for (ModuleRowHitbox hitbox : moduleHitboxes) {
 				if (hitbox.contains(mouseX, mouseY)) {
+					commitNumberInput();
 					hitbox.module().toggle();
 					return true;
 				}
 			}
+
+			commitNumberInput();
 		}
 
 		return super.mouseClicked(event, bl);
+	}
+
+	@Override
+	public boolean charTyped(CharacterEvent event) {
+		if (editingNumberSetting == null) {
+			return super.charTyped(event);
+		}
+
+		char codePoint = (char) event.codepoint();
+
+		if (Character.isDigit(codePoint)) {
+			numberInputBuffer += codePoint;
+			return true;
+		}
+
+		if (codePoint == '-' && numberInputBuffer.isEmpty()) {
+			numberInputBuffer = "-";
+			return true;
+		}
+
+		return true;
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (editingNumberSetting == null) {
+			return super.keyPressed(event);
+		}
+
+		int keyCode = event.key();
+
+		if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+			commitNumberInput();
+			return true;
+		}
+
+		if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+			cancelNumberInput();
+			return true;
+		}
+
+		if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+			if (!numberInputBuffer.isEmpty()) {
+				numberInputBuffer = numberInputBuffer.substring(0, numberInputBuffer.length() - 1);
+			}
+			return true;
+		}
+
+		return true;
+	}
+
+	private void adjustNumberSetting(NumberSetting setting, int delta) {
+		double steppedValue = Math.round(setting.getValue()) + delta;
+		steppedValue = Math.max(setting.getMin(), Math.min(setting.getMax(), steppedValue));
+		setting.setValue(steppedValue);
+	}
+
+	private void commitNumberInput() {
+		if (editingNumberSetting == null) {
+			return;
+		}
+
+		if (!numberInputBuffer.isEmpty() && !"-".equals(numberInputBuffer)) {
+			try {
+				double parsed = Integer.parseInt(numberInputBuffer);
+				parsed = Math.max(editingNumberSetting.getMin(), Math.min(editingNumberSetting.getMax(), parsed));
+				editingNumberSetting.setValue(parsed);
+			} catch (NumberFormatException ignored) {
+				// Ignore invalid input and keep existing value.
+			}
+		}
+
+		editingNumberSetting = null;
+		numberInputBuffer = "";
+	}
+
+	private void cancelNumberInput() {
+		editingNumberSetting = null;
+		numberInputBuffer = "";
 	}
 
 	@Override
@@ -245,7 +366,13 @@ public class ClickGuiScreen extends Screen {
 		}
 	}
 
-	private record NumberSettingHitbox(NumberSetting setting, int left, int top, int right, int bottom) {
+	private record NumberAdjustHitbox(NumberSetting setting, int left, int top, int right, int bottom, int delta) {
+		private boolean contains(double x, double y) {
+			return x >= left && x <= right && y >= top && y <= bottom;
+		}
+	}
+
+	private record NumberValueHitbox(NumberSetting setting, int left, int top, int right, int bottom) {
 		private boolean contains(double x, double y) {
 			return x >= left && x <= right && y >= top && y <= bottom;
 		}
