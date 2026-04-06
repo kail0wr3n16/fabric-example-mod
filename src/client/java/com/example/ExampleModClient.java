@@ -4,9 +4,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import org.lwjgl.glfw.GLFW;
 
-import com.example.feature.ClientFeature;
-import com.example.feature.FeatureManager;
-import com.example.feature.OverlayFeature;
+import com.example.module.Module;
+import com.example.module.ModuleManager;
+import com.example.module.OverlayModule;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -21,12 +21,12 @@ import net.minecraft.resources.Identifier;
 
 public class ExampleModClient implements ClientModInitializer {
 	private static final String MOD_ID = "clientloaded";
-	private static final Identifier FEATURES_HUD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "features_hud");
-	private final FeatureManager featureManager = new FeatureManager();
+	private static final Identifier MODULES_HUD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "modules_hud");
+	private final ModuleManager moduleManager = new ModuleManager();
 
 	@Override
 	public void onInitializeClient() {
-		featureManager.register(new OverlayFeature());
+		moduleManager.register(new OverlayModule());
 
 		KeyMapping toggleOverlayKey = KeyMappingHelper.registerKeyMapping(
 			new KeyMapping(
@@ -39,18 +39,18 @@ public class ExampleModClient implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			while (toggleOverlayKey.consumeClick()) {
-				ClientFeature overlayFeature = featureManager.get("overlay");
-				overlayFeature.toggle();
+				Module overlayModule = moduleManager.get("overlay");
+				overlayModule.toggle();
 
 				if (client.player != null) {
-					client.player.sendSystemMessage(Component.literal("Overlay " + (overlayFeature.isEnabled() ? "enabled" : "disabled")));
+					client.player.sendSystemMessage(Component.literal("Overlay " + (overlayModule.isEnabled() ? "enabled" : "disabled")));
 				}
 			}
 
-			featureManager.tick(client);
+			moduleManager.tick(client);
 		});
 
-		HudElementRegistry.addLast(FEATURES_HUD_ID, featureManager::renderHud);
+		HudElementRegistry.addLast(MODULES_HUD_ID, moduleManager::renderHud);
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
 			dispatcher.register(
@@ -67,34 +67,34 @@ public class ExampleModClient implements ClientModInitializer {
 							})
 					)
 					.then(
-						ClientCommands.literal("features")
+						ClientCommands.literal("modules")
 							.executes(context -> {
-								StringBuilder status = new StringBuilder("Features: ");
-								for (ClientFeature feature : featureManager.all()) {
-									if (status.length() > "Features: ".length()) {
+								StringBuilder status = new StringBuilder("Modules: ");
+								for (Module module : moduleManager.all()) {
+									if (status.length() > "Modules: ".length()) {
 										status.append(", ");
 									}
-									status.append(feature.id()).append("=").append(feature.isEnabled() ? "on" : "off");
+									status.append(module.getName()).append("=").append(module.isEnabled() ? "on" : "off");
 								}
 								context.getSource().sendFeedback(Component.literal(status.toString()));
 								return 1;
 							})
 					)
 					.then(
-						ClientCommands.literal("feature")
+						ClientCommands.literal("module")
 							.then(
 								ClientCommands.argument("name", StringArgumentType.word())
 									.then(
 										ClientCommands.literal("on")
 											.executes(context -> {
 												String name = StringArgumentType.getString(context, "name");
-												ClientFeature feature = featureManager.get(name);
-												if (feature == null) {
-													context.getSource().sendFeedback(Component.literal("Unknown feature: " + name));
+												Module module = moduleManager.get(name);
+												if (module == null) {
+													context.getSource().sendFeedback(Component.literal("Unknown module: " + name));
 													return 0;
 												}
 
-												feature.setEnabled(true);
+												module.setEnabled(true);
 												context.getSource().sendFeedback(Component.literal(name + " enabled"));
 												return 1;
 											})
@@ -103,13 +103,13 @@ public class ExampleModClient implements ClientModInitializer {
 										ClientCommands.literal("off")
 											.executes(context -> {
 												String name = StringArgumentType.getString(context, "name");
-												ClientFeature feature = featureManager.get(name);
-												if (feature == null) {
-													context.getSource().sendFeedback(Component.literal("Unknown feature: " + name));
+												Module module = moduleManager.get(name);
+												if (module == null) {
+													context.getSource().sendFeedback(Component.literal("Unknown module: " + name));
 													return 0;
 												}
 
-												feature.setEnabled(false);
+												module.setEnabled(false);
 												context.getSource().sendFeedback(Component.literal(name + " disabled"));
 												return 1;
 											})
@@ -118,14 +118,14 @@ public class ExampleModClient implements ClientModInitializer {
 										ClientCommands.literal("toggle")
 											.executes(context -> {
 												String name = StringArgumentType.getString(context, "name");
-												ClientFeature feature = featureManager.get(name);
-												if (feature == null) {
-													context.getSource().sendFeedback(Component.literal("Unknown feature: " + name));
+												Module module = moduleManager.get(name);
+												if (module == null) {
+													context.getSource().sendFeedback(Component.literal("Unknown module: " + name));
 													return 0;
 												}
 
-												feature.toggle();
-												context.getSource().sendFeedback(Component.literal(name + " " + (feature.isEnabled() ? "enabled" : "disabled")));
+												module.toggle();
+												context.getSource().sendFeedback(Component.literal(name + " " + (module.isEnabled() ? "enabled" : "disabled")));
 												return 1;
 											})
 									)
@@ -133,13 +133,13 @@ public class ExampleModClient implements ClientModInitializer {
 										ClientCommands.literal("status")
 											.executes(context -> {
 												String name = StringArgumentType.getString(context, "name");
-												ClientFeature feature = featureManager.get(name);
-												if (feature == null) {
-													context.getSource().sendFeedback(Component.literal("Unknown feature: " + name));
+												Module module = moduleManager.get(name);
+												if (module == null) {
+													context.getSource().sendFeedback(Component.literal("Unknown module: " + name));
 													return 0;
 												}
 
-												context.getSource().sendFeedback(Component.literal(name + " is " + (feature.isEnabled() ? "on" : "off")));
+												context.getSource().sendFeedback(Component.literal(name + " is " + (module.isEnabled() ? "on" : "off")));
 												return 1;
 											})
 									)

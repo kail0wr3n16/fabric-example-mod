@@ -1,16 +1,16 @@
-package com.example.feature;
+package com.example.module;
 
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
-public class OverlayFeature extends BaseClientFeature {
+public class OverlayModule extends Module {
 	private static final Component OVERLAY_TEXT = Component.literal("Client Active");
 	private static final int MARGIN = 6;
 	private static final int PADDING = 3;
 
-	public OverlayFeature() {
+	public OverlayModule() {
 		super("overlay", false);
 	}
 
