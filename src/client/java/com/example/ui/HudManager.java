@@ -5,6 +5,7 @@ import java.util.List;
 import com.example.module.Module;
 import com.example.module.ModuleManager;
 import com.example.ui.hud.CoordinatesHudElement;
+import com.example.ui.hud.DirectionHudElement;
 import com.example.ui.hud.FpsHudElement;
 import com.example.ui.hud.HudElement;
 import com.example.ui.hud.ModuleListHudElement;
@@ -23,6 +24,7 @@ public class HudManager {
 	private final WatermarkHudElement watermarkElement = new WatermarkHudElement();
 	private final FpsHudElement fpsElement = new FpsHudElement();
 	private final CoordinatesHudElement coordinatesElement = new CoordinatesHudElement();
+	private final DirectionHudElement directionElement = new DirectionHudElement();
 	private final ModuleListHudElement moduleListElement;
 
 	public record HudElementBounds(String elementId, String label, int x, int y, int width, int height, boolean enabled, boolean rightAligned) {
@@ -50,7 +52,7 @@ public class HudManager {
 	private void renderTopLeftOverlay(GuiGraphicsExtractor guiGraphics) {
 		Minecraft client = Minecraft.getInstance();
 
-		HudElement[] elements = new HudElement[] { watermarkElement, fpsElement, coordinatesElement };
+		HudElement[] elements = new HudElement[] { watermarkElement, fpsElement, coordinatesElement, directionElement };
 		int lineCount = 0;
 		int textWidth = 0;
 		for (HudElement element : elements) {
@@ -103,6 +105,7 @@ public class HudManager {
 			case "watermark" -> watermarkElement.setEnabled(enabled);
 			case "fps" -> fpsElement.setEnabled(enabled);
 			case "coordinates" -> coordinatesElement.setEnabled(enabled);
+			case "direction" -> directionElement.setEnabled(enabled);
 			case "modulelist" -> moduleListElement.setEnabled(enabled);
 			default -> {
 			}
@@ -114,6 +117,7 @@ public class HudManager {
 			case "watermark" -> watermarkElement.isEnabled();
 			case "fps" -> fpsElement.isEnabled();
 			case "coordinates" -> coordinatesElement.isEnabled();
+			case "direction" -> directionElement.isEnabled();
 			case "modulelist" -> moduleListElement.isEnabled();
 			default -> false;
 		};
@@ -133,6 +137,10 @@ public class HudManager {
 				coordinatesElement.setX(x);
 				coordinatesElement.setY(y);
 			}
+			case "direction" -> {
+				directionElement.setX(x);
+				directionElement.setY(y);
+			}
 			case "modulelist" -> {
 				moduleListElement.setX(x);
 				moduleListElement.setY(y);
@@ -147,6 +155,7 @@ public class HudManager {
 			case "watermark" -> watermarkElement.getX();
 			case "fps" -> fpsElement.getX();
 			case "coordinates" -> coordinatesElement.getX();
+			case "direction" -> directionElement.getX();
 			case "modulelist" -> moduleListElement.getX();
 			default -> 0;
 		};
@@ -157,6 +166,7 @@ public class HudManager {
 			case "watermark" -> watermarkElement.getY();
 			case "fps" -> fpsElement.getY();
 			case "coordinates" -> coordinatesElement.getY();
+			case "direction" -> directionElement.getY();
 			case "modulelist" -> moduleListElement.getY();
 			default -> 0;
 		};
@@ -167,6 +177,7 @@ public class HudManager {
 		result.add(buildBounds("watermark", "Watermark", watermarkElement, client, guiWidth, false));
 		result.add(buildBounds("fps", "FPS", fpsElement, client, guiWidth, false));
 		result.add(buildBounds("coordinates", "Coordinates", coordinatesElement, client, guiWidth, false));
+		result.add(buildBounds("direction", "Direction", directionElement, client, guiWidth, false));
 		result.add(buildBounds("modulelist", "Module List", moduleListElement, client, guiWidth, true));
 		return result;
 	}
@@ -188,5 +199,13 @@ public class HudManager {
 		}
 
 		setElementPosition(elementId, Math.max(0, screenX), Math.max(0, screenY));
+	}
+
+	public void resetAllElementPositions() {
+		watermarkElement.resetPosition();
+		fpsElement.resetPosition();
+		coordinatesElement.resetPosition();
+		directionElement.resetPosition();
+		moduleListElement.resetPosition();
 	}
 }

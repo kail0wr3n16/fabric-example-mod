@@ -1,11 +1,13 @@
 package com.example.module.setting;
 
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.List;
 
 public abstract class Setting<T> {
 	private final String name;
 	private T value;
-	private Runnable changeListener;
+	private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
 
 	protected Setting(String name, T defaultValue) {
 		this.name = name;
@@ -27,13 +29,22 @@ public abstract class Setting<T> {
 		}
 
 		this.value = sanitized;
-		if (changeListener != null) {
-			changeListener.run();
+		for (Runnable listener : changeListeners) {
+			listener.run();
 		}
 	}
 
 	public void setChangeListener(Runnable changeListener) {
-		this.changeListener = changeListener;
+		changeListeners.clear();
+		if (changeListener != null) {
+			changeListeners.add(changeListener);
+		}
+	}
+
+	public void addChangeListener(Runnable changeListener) {
+		if (changeListener != null) {
+			changeListeners.add(changeListener);
+		}
 	}
 
 	protected T sanitize(T value) {

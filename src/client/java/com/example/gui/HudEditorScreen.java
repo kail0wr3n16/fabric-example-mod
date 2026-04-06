@@ -13,6 +13,7 @@ import com.example.ui.HudManager.HudElementBounds;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
@@ -40,7 +41,8 @@ public class HudEditorScreen extends Screen {
 
 		guiGraphics.fill(0, 0, this.width, this.height, 0x55080A10);
 		guiGraphics.centeredText(this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
-		guiGraphics.centeredText(this.font, Component.literal("Drag boxes to reposition - Press H to exit"), this.width / 2, 20, 0xFFB8C3D6);
+		guiGraphics.centeredText(this.font, Component.literal("Drag boxes to reposition - Press R to reset - Press H to exit"), this.width / 2, 20,
+			0xFFB8C3D6);
 
 		for (HudElementBounds bounds : elementBounds) {
 			int left = bounds.x() - BOX_PADDING;
@@ -113,6 +115,17 @@ public class HudEditorScreen extends Screen {
 			draggingElementId = null;
 		}
 		return super.mouseReleased(event);
+	}
+
+	@Override
+	public boolean keyPressed(KeyEvent event) {
+		if (event.key() == GLFW.GLFW_KEY_R) {
+			hudManager.resetAllElementPositions();
+			moduleManager.notifyConfigChanged();
+			return true;
+		}
+
+		return super.keyPressed(event);
 	}
 
 	@Override

@@ -5,10 +5,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public abstract class HudElement {
 	private boolean enabled = true;
+	private final int defaultX;
+	private final int defaultY;
 	private int x;
 	private int y;
 
 	protected HudElement(int defaultX, int defaultY) {
+		this.defaultX = defaultX;
+		this.defaultY = defaultY;
 		this.x = defaultX;
 		this.y = defaultY;
 	}
@@ -35,6 +39,11 @@ public abstract class HudElement {
 
 	public void setY(int y) {
 		this.y = y;
+	}
+
+	public void resetPosition() {
+		this.x = defaultX;
+		this.y = defaultY;
 	}
 
 	public abstract int getLineCount(Minecraft client);

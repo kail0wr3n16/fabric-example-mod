@@ -21,9 +21,7 @@ public class InputHandler {
 	private final HudManager hudManager;
 	private final KeyMapping openGuiKey;
 	private final KeyMapping openHudEditorKey;
-	private final Map<String, Boolean> previousModuleKeyStates = new HashMap<>();
-	private boolean previousGuiKeyDown;
-	private boolean previousHudEditorKeyDown;
+	private final Map<String, Boolean> holdModuleKeyStates = new HashMap<>();
 	private boolean reconciledLegacyBindings;
 
 	public InputHandler(ModuleManager moduleManager, HudManager hudManager) {
@@ -50,13 +48,8 @@ public class InputHandler {
 	public void handleInput(Minecraft client) {
 		reconcileLegacyBindings(client);
 
-		boolean guiKeyDown = isBindingDown(client, openGuiKey);
-		boolean guiPressed = guiKeyDown && !previousGuiKeyDown;
-		previousGuiKeyDown = guiKeyDown;
-
-		boolean hudEditorKeyDown = isBindingDown(client, openHudEditorKey);
-		boolean hudEditorPressed = hudEditorKeyDown && !previousHudEditorKeyDown;
-		previousHudEditorKeyDown = hudEditorKeyDown;
+		boolean guiPressed = openGuiKey.consumeClick();
+		boolean hudEditorPressed = openHudEditorKey.consumeClick();
 
 		if (hudEditorPressed) {
 			if (client.screen instanceof HudEditorScreen) {
@@ -70,7 +63,7 @@ public class InputHandler {
 			client.setScreen(new ClickGuiScreen(moduleManager, hudManager));
 		}
 
-		boolean allowModuleToggle = client.screen == null;
+		boolean allowModuleInput = client.screen == null;
 
 		for (Module module : moduleManager.all()) {
 			KeyMapping keybind = module.getKeybind();
@@ -78,23 +71,20 @@ public class InputHandler {
 				continue;
 			}
 
-			boolean keyDown = isBindingDown(client, keybind);
-			boolean wasDown = previousModuleKeyStates.getOrDefault(module.getName(), false);
-			if (allowModuleToggle && keyDown && !wasDown) {
-				module.toggle();
+			if (module.isHoldKeybind()) {
+				boolean keyDown = allowModuleInput && module.isEnabled() && keybind.isDown();
+				boolean wasDown = holdModuleKeyStates.getOrDefault(module.getName(), false);
+				if (keyDown != wasDown) {
+					module.onKeybindStateChanged(client, keyDown);
+					holdModuleKeyStates.put(module.getName(), keyDown);
+				}
+				continue;
 			}
 
-			previousModuleKeyStates.put(module.getName(), keyDown);
+			if (allowModuleInput && keybind.consumeClick()) {
+				module.toggle();
+			}
 		}
-	}
-
-	private boolean isBindingDown(Minecraft client, KeyMapping keybind) {
-		InputConstants.Key boundKey = KeyMappingHelper.getBoundKeyOf(keybind);
-		if (boundKey.getType() == InputConstants.Type.MOUSE) {
-			return keybind.isDown();
-		}
-
-		return InputConstants.isKeyDown(client.getWindow(), boundKey.getValue());
 	}
 
 	private void reconcileLegacyBindings(Minecraft client) {

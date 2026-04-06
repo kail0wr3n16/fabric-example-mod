@@ -1,11 +1,16 @@
 package com.example.ui;
 
 public final class ClientColors {
-	// Change this RGB value to theme all HUD text color.
-	public static final int PRIMARY_RGB = rgb(84, 197, 255);
-	public static final int PRIMARY_TEXT_ARGB = withAlpha(PRIMARY_RGB, 0xFF);
+	public static final int DEFAULT_PRIMARY_RGB = rgb(84, 197, 255);
+	public static int PRIMARY_RGB = DEFAULT_PRIMARY_RGB;
+	public static int PRIMARY_TEXT_ARGB = withAlpha(PRIMARY_RGB, 0xFF);
 
 	private ClientColors() {
+	}
+
+	public static void setPrimaryColorRgb(int rgb) {
+		PRIMARY_RGB = rgb & 0xFFFFFF;
+		PRIMARY_TEXT_ARGB = withAlpha(PRIMARY_RGB, 0xFF);
 	}
 
 	private static int rgb(int red, int green, int blue) {

@@ -70,6 +70,13 @@ public abstract class Module {
 		return null;
 	}
 
+	public boolean isHoldKeybind() {
+		return false;
+	}
+
+	public void onKeybindStateChanged(Minecraft client, boolean isDown) {
+	}
+
 	public void setStateChangeListener(Runnable stateChangeListener) {
 		this.stateChangeListener = stateChangeListener;
 	}

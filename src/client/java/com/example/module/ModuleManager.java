@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.example.module.setting.BooleanSetting;
+import com.example.module.setting.ColorSetting;
 import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
 import com.example.ui.HudManager;
@@ -35,8 +36,9 @@ public class ModuleManager {
 	private static final String CONFIG_EXTENSION = ".properties";
 	private static final String DEFAULT_CONFIG_NAME = "default";
 	private static final long SAVE_DEBOUNCE_MS = 350L;
-	private static final String[] HUD_ELEMENT_IDS = new String[] { "watermark", "fps", "coordinates", "modulelist" };
+	private static final String[] HUD_ELEMENT_IDS = new String[] { "watermark", "fps", "coordinates", "direction", "modulelist" };
 	private static final Pattern VALID_CONFIG_NAME = Pattern.compile("[A-Za-z0-9_-]+");
+	private static final double LEGACY_ZOOM_BASE_FOV = 70.0;
 
 	private final Map<String, Module> modules = new LinkedHashMap<>();
 	private final ScheduledExecutorService saveExecutor = Executors.newSingleThreadScheduledExecutor(new ConfigSaveThreadFactory());
@@ -49,7 +51,7 @@ public class ModuleManager {
 		modules.put(module.getName(), module);
 		module.setStateChangeListener(this::onModuleStateChanged);
 		for (Setting<?> setting : module.getSettings()) {
-			setting.setChangeListener(this::onSettingChanged);
+			setting.addChangeListener(this::onSettingChanged);
 		}
 	}
 
@@ -195,12 +197,31 @@ public class ModuleManager {
 
 				for (Setting<?> setting : module.getSettings()) {
 					String settingRaw = props.getProperty("setting." + module.getName() + "." + setting.getName());
+					if (settingRaw == null && "zoom".equals(module.getName()) && "zoomAmount".equals(setting.getName())) {
+						String legacyZoomLevel = props.getProperty("setting.zoom.zoomLevel");
+						if (legacyZoomLevel != null) {
+							try {
+								double oldFovValue = Double.parseDouble(legacyZoomLevel);
+								double convertedZoomAmount = LEGACY_ZOOM_BASE_FOV / oldFovValue;
+								settingRaw = Double.toString(convertedZoomAmount);
+							} catch (NumberFormatException ignored) {
+								// Ignore invalid legacy value.
+							}
+						}
+					}
 					if (settingRaw == null) {
 						continue;
 					}
 
 					if (setting instanceof BooleanSetting booleanSetting) {
 						booleanSetting.setValue(Boolean.parseBoolean(settingRaw));
+					} else if (setting instanceof ColorSetting colorSetting) {
+						try {
+							int parsed = (int) Long.parseLong(settingRaw, 16);
+							colorSetting.setRgb(parsed);
+						} catch (NumberFormatException ignored) {
+							// Ignore invalid stored color values.
+						}
 					} else if (setting instanceof NumberSetting numberSetting) {
 						try {
 							numberSetting.setValue(Double.parseDouble(settingRaw));
@@ -264,7 +285,11 @@ public class ModuleManager {
 			props.setProperty("module.enabled." + module.getName(), Boolean.toString(module.isEnabled()));
 
 			for (Setting<?> setting : module.getSettings()) {
-				props.setProperty("setting." + module.getName() + "." + setting.getName(), setting.getValue().toString());
+				if (setting instanceof ColorSetting colorSetting) {
+					props.setProperty("setting." + module.getName() + "." + setting.getName(), Integer.toHexString(colorSetting.getRgb()));
+				} else {
+					props.setProperty("setting." + module.getName() + "." + setting.getName(), setting.getValue().toString());
+				}
 			}
 
 			if (module.getKeybind() != null) {

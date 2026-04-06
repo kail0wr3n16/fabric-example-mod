@@ -3,7 +3,9 @@
   "package": "com.example.mixin.client",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "LightmapRenderStateExtractorMixin"
+    "LightmapRenderStateExtractorMixin",
+    "CameraMixin",
+    "MouseHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

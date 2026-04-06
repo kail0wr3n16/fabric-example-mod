@@ -15,7 +15,10 @@ import com.example.module.FullbrightModule;
 import com.example.module.ModuleManager;
 import com.example.module.OverlayModule;
 import com.example.module.SprintModule;
+import com.example.module.ToggleSneakModule;
+import com.example.module.ZoomModule;
 import com.example.module.setting.BooleanSetting;
+import com.example.module.setting.ColorSetting;
 import com.example.module.setting.NumberSetting;
 import com.example.module.setting.Setting;
 import com.example.ui.HudManager;
@@ -44,6 +47,8 @@ public class ExampleModClient implements ClientModInitializer {
 		moduleManager.register(new OverlayModule());
 		moduleManager.register(new SprintModule());
 		moduleManager.register(new FullbrightModule());
+		moduleManager.register(new ToggleSneakModule());
+		moduleManager.register(new ZoomModule());
 		moduleManager.registerKeybinds(MOD_ID);
 		InputHandler inputHandler = new InputHandler(moduleManager, hudManager);
 
@@ -300,6 +305,17 @@ public class ExampleModClient implements ClientModInitializer {
 			}
 		}
 
+		if (setting instanceof ColorSetting colorSetting) {
+			String normalized = rawValue.startsWith("#") ? rawValue.substring(1) : rawValue;
+			try {
+				int rgb = Integer.parseInt(normalized, 16);
+				colorSetting.setRgb(rgb);
+				return true;
+			} catch (NumberFormatException ignored) {
+				return false;
+			}
+		}
+
 		return false;
 	}
 
@@ -342,6 +358,10 @@ public class ExampleModClient implements ClientModInitializer {
 
 		if (setting instanceof NumberSetting) {
 			return SharedSuggestionProvider.suggest(List.of("0", "1", "2", "3"), builder);
+		}
+
+		if (setting instanceof ColorSetting) {
+			return SharedSuggestionProvider.suggest(List.of("54c5ff", "ff5555", "55ff55", "ffffff"), builder);
 		}
 
 		return Suggestions.empty();
