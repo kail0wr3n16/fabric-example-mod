@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import com.example.ui.ClientColors;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.network.chat.Component;
 
 public class ModuleManager {
 	private static final int HUD_MARGIN = 6;
@@ -49,9 +49,6 @@ public class ModuleManager {
 
 			while (keybind.consumeClick()) {
 				module.toggle();
-				if (client.player != null) {
-					client.player.sendSystemMessage(Component.literal(module.getName() + " " + (module.isEnabled() ? "enabled" : "disabled")));
-				}
 			}
 		}
 	}
@@ -89,7 +86,7 @@ public class ModuleManager {
 			int textWidth = client.font.width(moduleName);
 			int x = guiGraphics.guiWidth() - HUD_MARGIN - textWidth;
 			int y = HUD_MARGIN + (i * HUD_LINE_HEIGHT);
-			guiGraphics.text(client.font, moduleName, x, y, 0xFFFFFFFF, true);
+			guiGraphics.text(client.font, moduleName, x, y, ClientColors.PRIMARY_TEXT_ARGB, true);
 		}
 	}
 }

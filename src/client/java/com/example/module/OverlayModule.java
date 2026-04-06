@@ -3,6 +3,8 @@ package com.example.module;
 import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 
+import com.example.ui.ClientColors;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -49,9 +51,9 @@ public class OverlayModule extends Module {
 		int boxHeight = (textHeight * 3) + (lineGap * 2);
 
 		guiGraphics.fill(x - PADDING, y - PADDING, x + textWidth + PADDING, y + boxHeight + PADDING, 0x90000000);
-		guiGraphics.text(client.font, OVERLAY_TEXT, x, y, 0xFFFFFFFF, true);
-		guiGraphics.text(client.font, fpsText, x, y + textHeight + lineGap, 0xFFFFFFFF, true);
-		guiGraphics.text(client.font, coordsText, x, y + ((textHeight + lineGap) * 2), 0xFFFFFFFF, true);
+		guiGraphics.text(client.font, OVERLAY_TEXT, x, y, ClientColors.PRIMARY_TEXT_ARGB, true);
+		guiGraphics.text(client.font, fpsText, x, y + textHeight + lineGap, ClientColors.PRIMARY_TEXT_ARGB, true);
+		guiGraphics.text(client.font, coordsText, x, y + ((textHeight + lineGap) * 2), ClientColors.PRIMARY_TEXT_ARGB, true);
 	}
 
 	private Component buildCoordsText(Minecraft client) {
