@@ -41,7 +41,7 @@ import com.example.module.SafeWalkModule;
 import com.example.module.ScreenshotModule;
 import com.example.module.ServerInfoHudModule;
 import com.example.module.SmartCompassHudModule;
-import com.example.module.TargetInfoModule;
+
 import com.example.module.ToggleSneakModule;
 import com.example.module.TrailModule;
 import com.example.module.WaypointsModule;
@@ -84,7 +84,7 @@ public class ExampleModClient implements ClientModInitializer {
 		moduleManager.register(new PotionTimerHudModule());
 		moduleManager.register(new ServerInfoHudModule());
 		moduleManager.register(new SmartCompassHudModule());
-		moduleManager.register(new TargetInfoModule());
+
 		moduleManager.register(new AutoTotemReminderModule());
 
 		// ── QOL ──────────────────────────────────────────────────────

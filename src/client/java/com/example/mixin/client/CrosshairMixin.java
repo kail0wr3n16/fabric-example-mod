@@ -10,13 +10,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Cancels the vanilla crosshair render when CustomCrosshairModule is active,
+ * Cancels the vanilla crosshair extraction when CustomCrosshairModule is active,
  * so only the custom one is visible.
  */
 @Mixin(Gui.class)
 public class CrosshairMixin {
-    @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
-    private void clientmodules$suppressVanillaCrosshair(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker, CallbackInfo ci) {
+    @Inject(method = "extractCrosshair", at = @At("HEAD"), cancellable = true)
+    private void clientmodules$suppressVanillaCrosshair(GuiGraphicsExtractor guiGraphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         CustomCrosshairModule module = CustomCrosshairModule.getInstance();
         if (module != null && module.isEnabled()) {
             ci.cancel();

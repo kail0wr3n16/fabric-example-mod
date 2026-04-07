@@ -13,7 +13,6 @@ import com.example.ui.hud.CoordinatesHudElement;
 import com.example.ui.hud.DirectionHudElement;
 import com.example.ui.hud.FpsHudElement;
 import com.example.ui.hud.HudElement;
-import com.example.ui.hud.ModuleListHudElement;
 import com.example.ui.hud.WatermarkHudElement;
 
 import net.minecraft.client.DeltaTracker;
@@ -34,7 +33,6 @@ public class HudManager {
 	private final FpsHudElement fpsElement = new FpsHudElement();
 	private final CoordinatesHudElement coordinatesElement = new CoordinatesHudElement();
 	private final DirectionHudElement directionElement = new DirectionHudElement();
-	private final ModuleListHudElement moduleListElement;
 	private final Map<String, Float> elementAlpha = new HashMap<>();
 	private int activeTextColor = ClientColors.PRIMARY_TEXT_ARGB;
 
@@ -43,12 +41,10 @@ public class HudManager {
 
 	public HudManager(ModuleManager moduleManager) {
 		this.moduleManager = moduleManager;
-		this.moduleListElement = new ModuleListHudElement(moduleManager);
 		elementAlpha.put("watermark", 1.0f);
 		elementAlpha.put("fps", 1.0f);
 		elementAlpha.put("coordinates", 1.0f);
 		elementAlpha.put("direction", 1.0f);
-		elementAlpha.put("modulelist", 1.0f);
 	}
 
 	public void setContextManager(ContextManager contextManager) {
@@ -76,12 +72,6 @@ public class HudManager {
 		updateElementAlphas(context, adaptiveMode, cleanUiMode);
 
 		renderTopLeftOverlay(guiGraphics, client, context, adaptiveMode, cleanUiMode);
-
-		float moduleListAlpha = elementAlpha.getOrDefault("modulelist", 0.0f);
-		if (moduleListAlpha > 0.02f && moduleListElement.isEnabled() && shouldShowElement("modulelist", context, adaptiveMode, cleanUiMode)) {
-			int moduleListColor = withScaledAlpha(activeTextColor, moduleListAlpha);
-			moduleListElement.render(guiGraphics, client, TEXT_HEIGHT, LINE_GAP, moduleListColor);
-		}
 
 		renderContextNotification(guiGraphics, client);
 	}
@@ -164,7 +154,7 @@ public class HudManager {
 	}
 
 	private void updateElementAlphas(PlayerContext context, boolean adaptiveMode, boolean cleanUiMode) {
-		for (String elementId : new String[] { "watermark", "fps", "coordinates", "direction", "modulelist" }) {
+		for (String elementId : new String[] { "watermark", "fps", "coordinates", "direction" }) {
 			boolean userEnabled = isElementEnabled(elementId);
 			boolean visibleByContext = shouldShowElement(elementId, context, adaptiveMode, cleanUiMode);
 			float target = (userEnabled && visibleByContext) ? 1.0f : 0.0f;
@@ -181,13 +171,12 @@ public class HudManager {
 
 		return switch (context) {
 			case COMBAT -> switch (elementId) {
-				case "watermark", "fps", "modulelist" -> true;
+				case "watermark", "fps" -> true;
 				case "coordinates", "direction" -> !cleanUiMode;
 				default -> false;
 			};
 			case LOW_HEALTH -> switch (elementId) {
 				case "watermark", "fps", "coordinates" -> true;
-				case "modulelist" -> !cleanUiMode;
 				case "direction" -> !cleanUiMode;
 				default -> false;
 			};
@@ -278,7 +267,6 @@ public class HudManager {
 			case "fps" -> fpsElement.setEnabled(enabled);
 			case "coordinates" -> coordinatesElement.setEnabled(enabled);
 			case "direction" -> directionElement.setEnabled(enabled);
-			case "modulelist" -> moduleListElement.setEnabled(enabled);
 			default -> {
 			}
 		}
@@ -290,7 +278,6 @@ public class HudManager {
 			case "fps" -> fpsElement.isEnabled();
 			case "coordinates" -> coordinatesElement.isEnabled();
 			case "direction" -> directionElement.isEnabled();
-			case "modulelist" -> moduleListElement.isEnabled();
 			default -> false;
 		};
 	}
@@ -313,10 +300,6 @@ public class HudManager {
 				directionElement.setX(x);
 				directionElement.setY(y);
 			}
-			case "modulelist" -> {
-				moduleListElement.setX(x);
-				moduleListElement.setY(y);
-			}
 			default -> {
 			}
 		}
@@ -328,7 +311,6 @@ public class HudManager {
 			case "fps" -> fpsElement.getX();
 			case "coordinates" -> coordinatesElement.getX();
 			case "direction" -> directionElement.getX();
-			case "modulelist" -> moduleListElement.getX();
 			default -> 0;
 		};
 	}
@@ -339,7 +321,6 @@ public class HudManager {
 			case "fps" -> fpsElement.getY();
 			case "coordinates" -> coordinatesElement.getY();
 			case "direction" -> directionElement.getY();
-			case "modulelist" -> moduleListElement.getY();
 			default -> 0;
 		};
 	}
@@ -350,7 +331,6 @@ public class HudManager {
 		result.add(buildBounds("fps", "FPS", fpsElement, client, guiWidth, false));
 		result.add(buildBounds("coordinates", "Coordinates", coordinatesElement, client, guiWidth, false));
 		result.add(buildBounds("direction", "Direction", directionElement, client, guiWidth, false));
-		result.add(buildBounds("modulelist", "Module List", moduleListElement, client, guiWidth, true));
 		return result;
 	}
 
@@ -364,12 +344,6 @@ public class HudManager {
 	}
 
 	public void setElementPositionFromScreen(String elementId, int screenX, int screenY, int guiWidth, int elementWidth) {
-		if ("modulelist".equalsIgnoreCase(elementId)) {
-			int rightMargin = Math.max(0, guiWidth - screenX - elementWidth);
-			setElementPosition(elementId, rightMargin, screenY);
-			return;
-		}
-
 		setElementPosition(elementId, Math.max(0, screenX), Math.max(0, screenY));
 	}
 
@@ -378,6 +352,5 @@ public class HudManager {
 		fpsElement.resetPosition();
 		coordinatesElement.resetPosition();
 		directionElement.resetPosition();
-		moduleListElement.resetPosition();
 	}
 }
